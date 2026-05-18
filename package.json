@@ -1,0 +1,20 @@
+{
+  "name": "yacht-sales-ad-generator",
+  "version": "0.1.0",
+  "description": "Compass Line Marine listing-package generator: extracts boat data, analyzes photos, and writes platform-specific marketing copy.",
+  "type": "module",
+  "main": "src/generateListing.js",
+  "bin": {
+    "yacht-ad": "src/cli.js"
+  },
+  "scripts": {
+    "generate": "node src/cli.js",
+    "example": "node src/cli.js --input examples/raw_input.example.txt --photos examples/photos"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

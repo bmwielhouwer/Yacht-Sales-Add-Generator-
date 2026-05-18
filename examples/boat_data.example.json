@@ -1,0 +1,35 @@
+{
+  "category": "Power cruiser",
+  "make": "Sea Ray",
+  "model": "Sundancer 370",
+  "year": 2018,
+  "length_loa_ft": 37,
+  "beam_ft": 12.5,
+  "draft_ft": 3.2,
+  "engines": {
+    "count": 2,
+    "make_model": "MerCruiser 350 MAG",
+    "total_hours": 320,
+    "fuel_type": "gasoline"
+  },
+  "water_history": "freshwater_only",
+  "hull_material": "fiberglass",
+  "accommodations": {
+    "berths": 4,
+    "head": true,
+    "galley": true
+  },
+  "electronics_notes": "Full Garmin package — chartplotter, radar, AIS",
+  "recent_upgrades_notes": "New canvas 2024, fresh bottom paint",
+  "additional_notes": "Always stored indoors winter, summer slip in Lake Michigan",
+  "asking_price_usd": 189000,
+  "trailer_included": false,
+  "survey_available": true,
+  "warranty_remaining": null,
+  "broker": {
+    "name": "Mike Wielhouwer",
+    "phone": "555-123-4567",
+    "email": "mike@hometownmarine.com",
+    "company": "Hometown Marine"
+  }
+}
