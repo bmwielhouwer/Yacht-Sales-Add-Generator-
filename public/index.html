@@ -591,6 +591,54 @@
         return parts.join(" ");
       }
 
+      function buildPhotoGallery(listing, photoSummary) {
+        if (photos.length === 0) return null;
+
+        const summaryByIdx = new Map(
+          (photoSummary?.photos ?? []).map((p) => [p.index, p])
+        );
+        const orderRaw = Array.isArray(listing?.photo_order) ? listing.photo_order : [];
+        const seen = new Set();
+        const ordered = [];
+        for (const idx of orderRaw) {
+          if (Number.isInteger(idx) && idx >= 1 && idx <= photos.length && !seen.has(idx)) {
+            seen.add(idx);
+            ordered.push(idx);
+          }
+        }
+        for (let i = 1; i <= photos.length; i++) {
+          if (!seen.has(i)) ordered.push(i);
+        }
+
+        const items = ordered.map((idx, pos) => {
+          const photo = photos[idx - 1];
+          if (!photo) return "";
+          const cat = summaryByIdx.get(idx)?.category;
+          const label = cat ? (PHOTO_CATEGORIES[cat]?.label ?? cat.replaceAll("_", " ")) : "photo";
+          return `
+            <figure class="listing-photo">
+              <div class="listing-photo-img">
+                <span class="listing-photo-num">${pos + 1}</span>
+                <img alt="${escape(label)}" src="${photo.dataUrl}" />
+              </div>
+              <figcaption>${escape(label)}</figcaption>
+            </figure>
+          `;
+        }).join("");
+
+        return `
+          <div class="card output-card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Photos in this listing</div>
+                <div class="card-subtitle">Your uploads, ordered for the post</div>
+              </div>
+            </div>
+            <div class="listing-photo-grid">${items}</div>
+          </div>
+        `;
+      }
+
       function renderResults(data) {
         const { listing, boatData, photoSummary } = data;
         lastResult = data;
@@ -610,6 +658,9 @@
         if (gap) {
           parts.push(`<div class="gap-banner"><strong>Photo gap analysis.</strong> ${escape(gap)}</div>`);
         }
+
+        const gallery = buildPhotoGallery(listing, photoSummary);
+        if (gallery) parts.push(gallery);
 
         for (const { key, title, subtitle } of SECTIONS) {
           const value = readListingValue(listing, key);
