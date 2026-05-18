@@ -591,12 +591,17 @@
         return parts.join(" ");
       }
 
-      function buildPhotoGallery(listing, photoSummary) {
-        if (photos.length === 0) return null;
+      const PHOTO_LAYOUTS = {
+        long_description: "interleave",
+        facebook_marketplace: "hero-grid",
+        facebook_post: "hero",
+        instagram_caption: "carousel",
+        linkedin_post: "hero",
+        email_body: "hero-grid",
+      };
+      const CAROUSEL_MAX = 5;
 
-        const summaryByIdx = new Map(
-          (photoSummary?.photos ?? []).map((p) => [p.index, p])
-        );
+      function buildPhotoOrder(listing) {
         const orderRaw = Array.isArray(listing?.photo_order) ? listing.photo_order : [];
         const seen = new Set();
         const ordered = [];
@@ -609,32 +614,32 @@
         for (let i = 1; i <= photos.length; i++) {
           if (!seen.has(i)) ordered.push(i);
         }
+        return ordered;
+      }
 
-        const photoFor = (idx, pos) => {
-          const photo = photos[idx - 1];
-          if (!photo) return "";
-          const cat = summaryByIdx.get(idx)?.category;
-          const label = cat ? (PHOTO_CATEGORIES[cat]?.label ?? cat.replaceAll("_", " ")) : "photo";
-          return `
-            <figure class="listing-photo">
-              <div class="listing-photo-img">
-                <span class="listing-photo-num">${pos}</span>
-                <img alt="${escape(label)}" src="${photo.dataUrl}" />
-              </div>
-              <figcaption>Photo ${pos} — ${escape(label)}</figcaption>
-            </figure>
-          `;
-        };
+      function photoFigure(idx, pos, summaryByIdx, size) {
+        const photo = photos[idx - 1];
+        if (!photo) return "";
+        const cat = summaryByIdx.get(idx)?.category;
+        const label = cat ? (PHOTO_CATEGORIES[cat]?.label ?? cat.replaceAll("_", " ")) : "photo";
+        const sizeClass = size ? ` listing-photo-${size}` : "";
+        return `
+          <figure class="listing-photo${sizeClass}">
+            <div class="listing-photo-img">
+              <span class="listing-photo-num">${pos}</span>
+              <img alt="${escape(label)}" src="${photo.dataUrl}" />
+            </div>
+            <figcaption>Photo ${pos} — ${escape(label)}</figcaption>
+          </figure>
+        `;
+      }
 
-        const text = listing?.long_description ?? "";
+      function buildInterleavedPreview(text, ordered, summaryByIdx) {
         const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
         const blocks = [];
-
-        // Hero photo first.
         const heroIdx = ordered[0];
-        if (heroIdx) blocks.push(photoFor(heroIdx, 1));
+        if (heroIdx) blocks.push(photoFigure(heroIdx, 1, summaryByIdx, "hero"));
 
-        // Distribute remaining photos between paragraphs.
         const rest = ordered.slice(1);
         if (paragraphs.length > 0) {
           const slots = Math.max(1, paragraphs.length - 1);
@@ -644,10 +649,11 @@
             blocks.push(`<p class="preview-para">${escape(p)}</p>`);
             if (i < paragraphs.length - 1 && cursor < rest.length) {
               const chunk = rest.slice(cursor, cursor + perSlot);
+              const start = cursor;
               cursor += perSlot;
               if (chunk.length) {
                 const items = chunk
-                  .map((idx, j) => photoFor(idx, cursor - chunk.length + j + 2))
+                  .map((idx, j) => photoFigure(idx, start + j + 2, summaryByIdx))
                   .join("");
                 blocks.push(`<div class="preview-photo-row">${items}</div>`);
               }
@@ -656,30 +662,47 @@
           if (cursor < rest.length) {
             const chunk = rest.slice(cursor);
             const items = chunk
-              .map((idx, j) => photoFor(idx, cursor + j + 2))
+              .map((idx, j) => photoFigure(idx, cursor + j + 2, summaryByIdx))
               .join("");
             blocks.push(`<div class="preview-photo-row">${items}</div>`);
           }
         } else if (rest.length) {
-          const items = rest.map((idx, j) => photoFor(idx, j + 2)).join("");
+          const items = rest.map((idx, j) => photoFigure(idx, j + 2, summaryByIdx)).join("");
           blocks.push(`<div class="preview-photo-row">${items}</div>`);
         }
+        return blocks.join("");
+      }
 
-        return `
-          <div class="card output-card">
-            <div class="card-header">
-              <div>
-                <div class="card-title">Posting preview</div>
-                <div class="card-subtitle">Long description with photos in the recommended order</div>
-              </div>
-              <button type="button" class="btn btn-outline copy-btn" data-text="${escape(text)}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                Copy text only
-              </button>
-            </div>
-            <div class="listing-preview">${blocks.join("")}</div>
-          </div>
-        `;
+      function buildSectionPhotos(key, text, ordered, summaryByIdx) {
+        const layout = PHOTO_LAYOUTS[key];
+        if (!layout || ordered.length === 0) return "";
+
+        if (layout === "interleave") {
+          return `<div class="listing-preview">${buildInterleavedPreview(text, ordered, summaryByIdx)}</div>`;
+        }
+        if (layout === "hero") {
+          const hero = photoFigure(ordered[0], 1, summaryByIdx, "hero");
+          return `<div class="section-photos section-photos-single">${hero}</div>`;
+        }
+        if (layout === "carousel") {
+          const count = Math.min(CAROUSEL_MAX, ordered.length);
+          const items = ordered.slice(0, count)
+            .map((idx, j) => photoFigure(idx, j + 1, summaryByIdx))
+            .join("");
+          const note = ordered.length > count
+            ? `<div class="section-photos-note">First ${count} of ${ordered.length} — Instagram supports up to 10 in a carousel.</div>`
+            : "";
+          return `<div class="section-photos"><div class="preview-photo-row">${items}</div>${note}</div>`;
+        }
+        if (layout === "hero-grid") {
+          const hero = photoFigure(ordered[0], 1, summaryByIdx, "hero");
+          const rest = ordered.slice(1);
+          const grid = rest.length
+            ? `<div class="preview-photo-row">${rest.map((idx, j) => photoFigure(idx, j + 2, summaryByIdx)).join("")}</div>`
+            : "";
+          return `<div class="section-photos">${hero}${grid}</div>`;
+        }
+        return "";
       }
 
       function renderResults(data) {
@@ -702,15 +725,20 @@
           parts.push(`<div class="gap-banner"><strong>Photo gap analysis.</strong> ${escape(gap)}</div>`);
         }
 
-        const gallery = buildPhotoGallery(listing, photoSummary);
-        if (gallery) parts.push(gallery);
+        const summaryByIdx = new Map(
+          (photoSummary?.photos ?? []).map((p) => [p.index, p])
+        );
+        const ordered = photos.length > 0 ? buildPhotoOrder(listing) : [];
 
-        const hasPreview = gallery !== null;
         for (const { key, title, subtitle } of SECTIONS) {
-          if (key === "long_description" && hasPreview) continue;
           const value = readListingValue(listing, key);
           if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) continue;
           const text = formatSection(key, value);
+          const photoBlock = buildSectionPhotos(key, text, ordered, summaryByIdx);
+          const isInterleaved = PHOTO_LAYOUTS[key] === "interleave" && photoBlock;
+          const body = isInterleaved
+            ? photoBlock
+            : `${photoBlock}<pre class="output${key === "instagram_hashtags" ? " output-mono" : ""}">${escape(text)}</pre>`;
           parts.push(`
             <div class="card output-card">
               <div class="card-header">
@@ -720,10 +748,10 @@
                 </div>
                 <button type="button" class="btn btn-outline copy-btn" data-text="${escape(text)}">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                  Copy to clipboard
+                  Copy ${isInterleaved ? "text only" : "to clipboard"}
                 </button>
               </div>
-              <pre class="output${key === "instagram_hashtags" ? " output-mono" : ""}">${escape(text)}</pre>
+              ${body}
             </div>
           `);
         }
