@@ -395,6 +395,44 @@ select { appearance: none; background-image: url("data:image/svg+xml;utf8,<svg x
 .gap-banner strong { color: var(--warn-ink); font-weight: 600; }
 
 .output-card .card-header { margin-bottom: 12px; }
+
+.listing-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+.listing-photo { margin: 0; }
+.listing-photo-img {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.listing-photo-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.listing-photo-num {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: rgba(11, 37, 69, 0.85);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.listing-photo figcaption {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: capitalize;
+}
 .output {
   white-space: pre-wrap;
   font-family: "Inter", sans-serif;
