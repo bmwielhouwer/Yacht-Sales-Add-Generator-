@@ -6,7 +6,7 @@
     <title>Compass Line Marine — Listing Generator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       :root {
         --navy: #0B2545;
@@ -14,7 +14,7 @@
         --bg: #F7F7F4;
         --surface: #FFFFFF;
         --brass: #C8A951;
-        --brass-hover: #b39542;
+        --brass-hover: #B59640;
         --teal: #2A6F6F;
         --teal-soft: #e7f0f0;
         --ink: #1A1A1A;
@@ -28,7 +28,7 @@
         --warn-ink: #6b5400;
         --radius-card: 12px;
         --radius-input: 8px;
-        --shadow-sm: 0 1px 2px rgba(11, 37, 69, 0.04);
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
         --shadow-md: 0 4px 16px rgba(11, 37, 69, 0.06);
       }
       * { box-sizing: border-box; }
@@ -59,10 +59,11 @@
         gap: 14px;
       }
       .logo-mark {
-        height: 52px;
-        width: auto;
+        width: 44px;
+        height: 44px;
         flex-shrink: 0;
         display: block;
+        color: var(--navy);
       }
       .wordmark-divider {
         width: 1px;
@@ -72,9 +73,21 @@
       }
       .wordmark-primary {
         font-weight: 500;
-        font-size: 18px;
+        font-size: 21px;
         color: var(--navy);
-        letter-spacing: -0.01em;
+        letter-spacing: -0.02em;
+      }
+
+      .horizon {
+        height: 40px;
+        background: var(--bg);
+        overflow: hidden;
+        line-height: 0;
+      }
+      .horizon svg {
+        width: 100%;
+        height: 100%;
+        display: block;
       }
 
       .container { max-width: 1024px; margin: 0 auto; padding: 40px 24px 80px; }
@@ -82,10 +95,12 @@
       .page-intro { margin-bottom: 28px; }
       .page-intro h1 {
         margin: 0 0 8px;
+        font-family: "Cormorant Garamond", Georgia, serif;
         font-weight: 500;
-        font-size: 28px;
-        letter-spacing: -0.02em;
+        font-size: 36px;
+        letter-spacing: -0.005em;
         color: var(--navy);
+        line-height: 1.15;
       }
       .page-intro p { margin: 0; color: var(--muted); font-size: 15px; max-width: 640px; }
 
@@ -104,11 +119,15 @@
         margin-bottom: 18px;
       }
       .card-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
         font-weight: 500;
         font-size: 16px;
         color: var(--navy);
         letter-spacing: -0.01em;
       }
+      .card-title-icon { color: var(--teal); flex-shrink: 0; }
       .card-subtitle { font-size: 13px; color: var(--muted); }
 
       label {
@@ -189,16 +208,18 @@
         font-weight: 500;
         cursor: pointer;
         border: 1px solid transparent;
-        transition: background 120ms, border-color 120ms, color 120ms;
+        transition: background 200ms, border-color 200ms, color 200ms;
       }
       .btn-primary {
         background: var(--brass);
-        color: var(--navy);
+        color: #FFFFFF;
         border-color: var(--brass);
         font-weight: 600;
       }
       .btn-primary:hover:not(:disabled) { background: var(--brass-hover); border-color: var(--brass-hover); }
-      .btn-primary:disabled { opacity: 0.55; cursor: wait; }
+      .btn-primary:disabled { opacity: 0.6; cursor: wait; }
+      .btn-primary .btn-arrow { transition: transform 200ms; }
+      .btn-primary:hover:not(:disabled) .btn-arrow { transform: translateX(2px); }
       .btn-outline {
         background: var(--surface);
         color: var(--navy);
@@ -365,16 +386,98 @@
         display: inline-block;
       }
       @keyframes spin { to { transform: rotate(360deg); } }
+
+      .loader {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-input);
+        padding: 16px 18px;
+        margin-top: 20px;
+        box-shadow: var(--shadow-sm);
+      }
+      .loader[hidden] { display: none; }
+      .loader-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .loader-text {
+        font-size: 14px;
+        color: var(--ink);
+        font-weight: 500;
+      }
+      .loader-text-done { color: var(--muted); font-weight: 400; }
+      .loader-text-active { color: var(--navy); }
+      .loader-check {
+        width: 14px;
+        height: 14px;
+        color: var(--teal);
+        flex-shrink: 0;
+      }
+      .loader-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--brass);
+        flex-shrink: 0;
+        animation: loaderPulse 1.1s ease-in-out infinite;
+      }
+      .loader-dot-pending {
+        background: var(--line-strong);
+        animation: none;
+      }
+      @keyframes loaderPulse {
+        0%, 100% { opacity: 0.35; transform: scale(0.9); }
+        50%      { opacity: 1; transform: scale(1); }
+      }
+      .loader-bar {
+        height: 3px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 2px;
+        overflow: hidden;
+        position: relative;
+      }
+      .loader-bar-fill {
+        position: absolute;
+        top: 0;
+        left: -40%;
+        height: 100%;
+        width: 40%;
+        background: var(--brass);
+        border-radius: 2px;
+        animation: loaderSweep 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+      @keyframes loaderSweep {
+        0%   { left: -40%; }
+        100% { left: 100%; }
+      }
     </style>
   </head>
   <body>
     <header class="site-header">
       <div class="site-header-inner">
-        <img class="logo-mark" src="/logo.png" alt="Compass Line Ventures" />
+        <svg class="logo-mark" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="1.5" />
+          <path d="M24 2 L27 24 L24 24 Z" fill="currentColor" />
+          <path d="M24 2 L21 24 L24 24 Z" fill="currentColor" fill-opacity="0.55" />
+          <path d="M24 44 L27 24 L24 24 Z" fill="currentColor" fill-opacity="0.55" />
+          <path d="M24 44 L21 24 L24 24 Z" fill="currentColor" />
+          <path d="M44 24 L24 21 L24 24 Z" fill="currentColor" />
+          <path d="M44 24 L24 27 L24 24 Z" fill="currentColor" fill-opacity="0.55" />
+          <path d="M4 24 L24 21 L24 24 Z" fill="currentColor" fill-opacity="0.55" />
+          <path d="M4 24 L24 27 L24 24 Z" fill="currentColor" />
+        </svg>
         <span class="wordmark-divider" aria-hidden="true"></span>
         <span class="wordmark-primary">Compass Line Marine</span>
       </div>
     </header>
+    <div class="horizon" aria-hidden="true">
+      <svg viewBox="0 0 1200 40" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,22 C150,10 300,34 450,22 S750,10 900,22 S1200,34 1200,22" fill="none" stroke="#C8A951" stroke-opacity="0.30" stroke-width="1" stroke-linecap="round" />
+      </svg>
+    </div>
 
     <main class="container">
       <div class="page-intro">
@@ -385,7 +488,10 @@
       <form id="form" novalidate>
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Boat details</span>
+            <span class="card-title">
+              <svg class="card-title-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+              Boat details
+            </span>
             <span class="card-subtitle">Notes are extracted automatically</span>
           </div>
 
@@ -420,7 +526,10 @@
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Broker contact</span>
+            <span class="card-title">
+              <svg class="card-title-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Broker contact
+            </span>
             <span class="card-subtitle">Used in every output — saved locally</span>
           </div>
           <div class="grid-2 field">
@@ -447,7 +556,10 @@
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Photos</span>
+            <span class="card-title">
+              <svg class="card-title-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
+              Photos
+            </span>
             <span class="card-subtitle">Up to 25 · resized to 1600px before upload</span>
           </div>
           <div class="dropzone" id="dropzone" role="button" tabindex="0">
@@ -468,8 +580,27 @@
         </div>
 
         <div class="submit-row">
-          <button type="submit" class="btn btn-primary" id="submit">Generate listing</button>
+          <button type="submit" class="btn btn-primary" id="submit">
+            <span>Generate listing</span>
+            <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+          </button>
           <span class="status" id="status"></span>
+        </div>
+
+        <div class="loader" id="loader" hidden>
+          <div class="loader-row" id="loader-step-notes">
+            <span class="loader-dot loader-dot-pending" data-role="indicator"></span>
+            <span class="loader-text" data-role="text">Reading your notes…</span>
+          </div>
+          <div class="loader-row" id="loader-step-photos">
+            <span class="loader-dot loader-dot-pending" data-role="indicator"></span>
+            <span class="loader-text" data-role="text">Analyzing photos…</span>
+          </div>
+          <div class="loader-row" id="loader-step-write">
+            <span class="loader-dot loader-dot-pending" data-role="indicator"></span>
+            <span class="loader-text" data-role="text">Writing the listing…</span>
+          </div>
+          <div class="loader-bar"><div class="loader-bar-fill"></div></div>
         </div>
       </form>
 
@@ -477,7 +608,7 @@
     </main>
 
     <footer class="site-footer">
-      Compass Line Ventures · Built for working brokers
+      Compass Line Marine — Built for serious brokers
     </footer>
 
     <script>
@@ -533,6 +664,59 @@
       const photoMeta = $("photo-meta");
       const photoCount = $("photo-count");
       const clearPhotos = $("clear-photos");
+      const loader = $("loader");
+
+      const CHECK_SVG = `<svg class="loader-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+      function startLoader(hasPhotos) {
+        const steps = [
+          { id: "loader-step-notes", delay: 0 },
+          { id: "loader-step-photos", delay: 2500, skip: !hasPhotos },
+          { id: "loader-step-write", delay: hasPhotos ? 11000 : 5000 },
+        ];
+        const active = steps.filter((s) => !s.skip);
+
+        for (const step of steps) {
+          $(step.id).hidden = !!step.skip;
+        }
+        for (const step of active) {
+          markPending($(step.id));
+        }
+        loader.hidden = false;
+
+        const timers = [];
+        active.forEach((step, i) => {
+          timers.push(setTimeout(() => {
+            for (let j = 0; j < i; j++) markDone($(active[j].id));
+            markActive($(step.id));
+          }, step.delay));
+        });
+
+        return () => {
+          timers.forEach(clearTimeout);
+          loader.hidden = true;
+        };
+      }
+
+      function markPending(row) {
+        const ind = row.querySelector('[data-role="indicator"]');
+        ind.outerHTML = `<span class="loader-dot loader-dot-pending" data-role="indicator"></span>`;
+        row.querySelector('[data-role="text"]').className = "loader-text";
+      }
+      function markActive(row) {
+        const ind = row.querySelector('[data-role="indicator"]');
+        ind.outerHTML = `<span class="loader-dot" data-role="indicator"></span>`;
+        row.querySelector('[data-role="text"]').className = "loader-text loader-text-active";
+      }
+      function markDone(row) {
+        const ind = row.querySelector('[data-role="indicator"]');
+        const wrapper = document.createElement("span");
+        wrapper.innerHTML = CHECK_SVG;
+        const svg = wrapper.firstElementChild;
+        svg.setAttribute("data-role", "indicator");
+        ind.replaceWith(svg);
+        row.querySelector('[data-role="text"]').className = "loader-text loader-text-done";
+      }
 
       function escape(s) {
         return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
@@ -879,7 +1063,8 @@
         submit.disabled = true;
         results.classList.remove("show");
         results.innerHTML = "";
-        setStatus("Generating — about 30 seconds…", { spinner: true });
+        setStatus("");
+        const stopLoader = startLoader(photos.length > 0);
 
         try {
           const res = await fetch("/api/generate-listing", {
@@ -895,9 +1080,11 @@
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+          stopLoader();
           setStatus("Listing package ready.", { kind: "good" });
           renderResults(data);
         } catch (err) {
+          stopLoader();
           setStatus("Error — " + err.message, { kind: "error" });
         } finally {
           submit.disabled = false;
