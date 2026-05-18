@@ -1,0 +1,13 @@
+{
+  "photos": [
+    { "index": 1, "category": "exterior_starboard_wide", "hero_candidate": true, "quality": "good" },
+    { "index": 2, "category": "bow", "hero_candidate": false, "quality": "good" },
+    { "index": 3, "category": "helm", "hero_candidate": false, "quality": "good" },
+    { "index": 4, "category": "salon", "hero_candidate": false, "quality": "dim" },
+    { "index": 5, "category": "galley", "hero_candidate": false, "quality": "good" },
+    { "index": 6, "category": "berth_master", "hero_candidate": false, "quality": "good" },
+    { "index": 7, "category": "engine_room", "hero_candidate": false, "quality": "good" }
+  ],
+  "missing_categories": ["stern", "head"],
+  "quality_issues": ["photo 4 is dim — recommend retake"]
+}
