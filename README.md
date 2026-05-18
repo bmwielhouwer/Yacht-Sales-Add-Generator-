@@ -94,8 +94,11 @@ The repo also ships as a Vercel-deployable web app:
 To deploy:
 
 1. Connect the repo on Vercel.
-2. In **Project Settings → Environment Variables**, add `ANTHROPIC_API_KEY` (Production + Preview + Development).
-3. Redeploy. Visit the deployment's root URL to see the form.
+2. In **Project Settings → Environment Variables**, set:
+   - `ANTHROPIC_API_KEY` — your Anthropic key.
+   - `MARINE_ACCESS_CODES` — comma-separated list of valid access codes (e.g. `CLM-BRIAN-TEST,CLM-OPS-DEMO`). Codes are matched case-insensitively after trimming. The app refuses every API call without a valid code in the `X-Access-Code` header.
+   Apply both to Production + Preview + Development.
+3. Redeploy. Visit `/` to enter an access code; visit `/pricing` and `/success` (no gate) for the marketing pages.
 
 If you've already deployed and got a 404 at `/`, you just needed `public/index.html` — that's now in this commit. Redeploying picks it up automatically.
 

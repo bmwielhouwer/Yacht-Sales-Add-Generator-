@@ -1,6 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
   "functions": {
+    "api/verify-code.js": { "maxDuration": 10 },
     "api/extract-boat-data.js": { "maxDuration": 30 },
     "api/analyze-photos.js": { "maxDuration": 45 },
     "api/generate-listing.js": { "maxDuration": 45 }
