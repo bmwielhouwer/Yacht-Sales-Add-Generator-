@@ -15,30 +15,44 @@ export default async function handler(req, res) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(500).json({
       error:
-        "ANTHROPIC_API_KEY is not set on this deployment. Add it in Vercel → Project → Settings → Environment Variables and redeploy.",
+        "ANTHROPIC_API_KEY is not set on this deployment. Add it in Vercel → Project Settings → Environment Variables and redeploy.",
     });
   }
 
   try {
     const {
       rawInput,
-      photoUrls = [],
+      category,
+      askingPrice,
+      broker,
+      photos = [],
       boatData: presetBoatData,
       photoSummary: presetPhotoSummary,
     } = req.body ?? {};
 
-    if (!presetBoatData && !rawInput) {
-      return res.status(400).json({
-        error: "Provide rawInput (broker notes) or boatData (structured JSON).",
-      });
+    if (!presetBoatData && !rawInput?.trim()) {
+      return res.status(400).json({ error: "Broker notes are required." });
     }
 
-    const cleanUrls = photoUrls
-      .map((u) => (typeof u === "string" ? u.trim() : ""))
-      .filter(Boolean);
+    const [extractedBoatData, photoSummary] = await Promise.all([
+      presetBoatData ?? extractBoatData(rawInput),
+      presetPhotoSummary ?? analyzePhotos(photos),
+    ]);
 
-    const boatData = presetBoatData ?? (await extractBoatData(rawInput));
-    const photoSummary = presetPhotoSummary ?? (await analyzePhotos(cleanUrls));
+    const boatData = { ...extractedBoatData };
+    if (category?.trim()) boatData.category = category.trim();
+    if (askingPrice != null && askingPrice !== "") {
+      boatData.asking_price_usd = Number(askingPrice);
+    }
+    if (broker) {
+      boatData.broker = {
+        name: broker.name?.trim() || boatData.broker?.name || null,
+        phone: broker.phone?.trim() || boatData.broker?.phone || null,
+        email: broker.email?.trim() || boatData.broker?.email || null,
+        company: broker.company?.trim() || boatData.broker?.company || null,
+      };
+    }
+
     const listing = await generateListing({ boatData, photoSummary });
 
     return res.status(200).json({ boatData, photoSummary, listing });

@@ -14,6 +14,16 @@ const MEDIA_TYPES = {
 };
 
 function imageBlock(source) {
+  if (typeof source !== "string") {
+    throw new Error("Photo source must be a string (path, http(s) URL, or data URL)");
+  }
+  const dataUrlMatch = source.match(/^data:([^;]+);base64,(.+)$/);
+  if (dataUrlMatch) {
+    return {
+      type: "image",
+      source: { type: "base64", media_type: dataUrlMatch[1], data: dataUrlMatch[2] },
+    };
+  }
   if (/^https?:\/\//i.test(source)) {
     return { type: "image", source: { type: "url", url: source } };
   }

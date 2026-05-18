@@ -4,270 +4,909 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Compass Line Marine — Listing Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --bg: #f5f7fa;
-        --surface: #ffffff;
-        --ink: #0f1e2e;
-        --muted: #5b6b7a;
-        --line: #d9e0e8;
-        --accent: #0b4f6c;
-        --accent-hover: #093e57;
+        --navy: #0B2545;
+        --navy-soft: #1a3658;
+        --bg: #F7F7F4;
+        --surface: #FFFFFF;
+        --brass: #C8A951;
+        --brass-hover: #b39542;
+        --teal: #2A6F6F;
+        --teal-soft: #e7f0f0;
+        --ink: #1A1A1A;
+        --muted: #5F5F5F;
+        --line: #e6e3dc;
+        --line-strong: #d3cfc4;
         --danger: #b3261e;
         --good: #1d6b3a;
+        --warn-bg: #fdf6e3;
+        --warn-border: #e6c97a;
+        --warn-ink: #6b5400;
+        --radius-card: 12px;
+        --radius-input: 8px;
+        --shadow-sm: 0 1px 2px rgba(11, 37, 69, 0.04);
+        --shadow-md: 0 4px 16px rgba(11, 37, 69, 0.06);
       }
       * { box-sizing: border-box; }
-      html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        line-height: 1.5;
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 15px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
-      .container { max-width: 920px; margin: 0 auto; padding: 32px 20px 80px; }
-      header { margin-bottom: 24px; }
-      header h1 { margin: 0 0 4px; font-size: 24px; }
-      header p { margin: 0; color: var(--muted); font-size: 14px; }
+      a { color: var(--teal); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+
+      .site-header {
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
+      }
+      .site-header-inner {
+        max-width: 1024px;
+        margin: 0 auto;
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .logo-mark {
+        width: 36px;
+        height: 36px;
+        color: var(--navy);
+        flex-shrink: 0;
+      }
+      .wordmark { display: flex; flex-direction: column; line-height: 1.15; }
+      .wordmark-primary {
+        font-weight: 500;
+        font-size: 18px;
+        color: var(--navy);
+        letter-spacing: -0.01em;
+      }
+      .wordmark-tagline {
+        font-weight: 400;
+        font-size: 12px;
+        color: var(--muted);
+        letter-spacing: 0.02em;
+      }
+
+      .container { max-width: 1024px; margin: 0 auto; padding: 40px 24px 80px; }
+
+      .page-intro { margin-bottom: 28px; }
+      .page-intro h1 {
+        margin: 0 0 8px;
+        font-weight: 500;
+        font-size: 28px;
+        letter-spacing: -0.02em;
+        color: var(--navy);
+      }
+      .page-intro p { margin: 0; color: var(--muted); font-size: 15px; max-width: 640px; }
+
       .card {
         background: var(--surface);
         border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 16px;
+        border-radius: var(--radius-card);
+        padding: 24px;
+        box-shadow: var(--shadow-sm);
       }
-      label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; }
-      .hint { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 6px; }
-      textarea, input[type="text"] {
-        width: 100%;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      .card + .card { margin-top: 16px; }
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 18px;
+      }
+      .card-title {
+        font-weight: 500;
+        font-size: 16px;
+        color: var(--navy);
+        letter-spacing: -0.01em;
+      }
+      .card-subtitle { font-size: 13px; color: var(--muted); }
+
+      label {
+        display: block;
+        font-weight: 500;
         font-size: 13px;
-        padding: 10px 12px;
-        border: 1px solid var(--line);
-        border-radius: 6px;
-        background: #fafbfc;
-        resize: vertical;
         color: var(--ink);
+        margin-bottom: 6px;
       }
-      textarea:focus, input:focus {
-        outline: 2px solid var(--accent);
-        outline-offset: -1px;
-        background: #fff;
-      }
-      textarea.notes { min-height: 180px; }
-      textarea.urls { min-height: 80px; }
-      .field + .field { margin-top: 16px; }
-      .actions { display: flex; gap: 12px; align-items: center; margin-top: 4px; }
-      button.primary {
-        background: var(--accent);
-        color: white;
-        border: none;
-        padding: 10px 18px;
-        font-size: 14px;
-        font-weight: 600;
-        border-radius: 6px;
-        cursor: pointer;
-      }
-      button.primary:hover:not(:disabled) { background: var(--accent-hover); }
-      button.primary:disabled { opacity: 0.6; cursor: wait; }
-      button.copy {
-        background: transparent;
-        border: 1px solid var(--line);
+      label .req { color: var(--brass); margin-left: 2px; }
+      .hint {
         color: var(--muted);
-        padding: 4px 10px;
         font-size: 12px;
-        border-radius: 4px;
-        cursor: pointer;
+        font-weight: 400;
+        margin-top: 6px;
       }
-      button.copy:hover { border-color: var(--accent); color: var(--accent); }
+      .field + .field { margin-top: 18px; }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .grid-2-uneven {
+        display: grid;
+        grid-template-columns: 1fr 200px;
+        gap: 16px;
+      }
+      @media (max-width: 640px) {
+        .grid-2, .grid-2-uneven { grid-template-columns: 1fr; }
+      }
+
+      input[type="text"], input[type="email"], input[type="tel"], input[type="number"], select, textarea {
+        width: 100%;
+        font: inherit;
+        font-size: 14px;
+        padding: 10px 12px;
+        border: 1px solid var(--line-strong);
+        border-radius: var(--radius-input);
+        background: var(--surface);
+        color: var(--ink);
+        transition: border-color 120ms, box-shadow 120ms;
+      }
+      input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: var(--navy);
+        box-shadow: 0 0 0 3px rgba(11, 37, 69, 0.10);
+      }
+      textarea {
+        font-family: "Inter", sans-serif;
+        resize: vertical;
+      }
+      textarea.notes { min-height: 160px; }
+      select { appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%235F5F5F' d='M0 0l5 6 5-6z'/></svg>"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+      .price-input {
+        position: relative;
+      }
+      .price-input::before {
+        content: "$";
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+        font-size: 14px;
+        pointer-events: none;
+      }
+      .price-input input { padding-left: 24px; }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 20px;
+        border-radius: var(--radius-input);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: background 120ms, border-color 120ms, color 120ms;
+      }
+      .btn-primary {
+        background: var(--brass);
+        color: var(--navy);
+        border-color: var(--brass);
+        font-weight: 600;
+      }
+      .btn-primary:hover:not(:disabled) { background: var(--brass-hover); border-color: var(--brass-hover); }
+      .btn-primary:disabled { opacity: 0.55; cursor: wait; }
+      .btn-outline {
+        background: var(--surface);
+        color: var(--navy);
+        border-color: var(--line-strong);
+      }
+      .btn-outline:hover:not(:disabled) { border-color: var(--navy); }
+      .btn-ghost {
+        background: transparent;
+        color: var(--muted);
+        border-color: transparent;
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+      .btn-ghost:hover { color: var(--navy); background: var(--bg); }
+
+      .submit-row {
+        margin-top: 24px;
+        display: flex;
+        gap: 16px;
+        align-items: center;
+      }
       .status { font-size: 13px; color: var(--muted); }
       .status.error { color: var(--danger); }
       .status.good { color: var(--good); }
-      .results { display: none; }
-      .results.show { display: block; }
-      .section-head {
+
+      /* Dropzone */
+      .dropzone {
+        border: 1.5px dashed var(--line-strong);
+        border-radius: var(--radius-card);
+        padding: 28px;
+        text-align: center;
+        background: var(--bg);
+        transition: border-color 120ms, background 120ms;
+        cursor: pointer;
+      }
+      .dropzone:hover, .dropzone.dragover {
+        border-color: var(--teal);
+        background: var(--teal-soft);
+      }
+      .dropzone-icon { color: var(--teal); margin-bottom: 8px; }
+      .dropzone-title { font-weight: 500; color: var(--navy); font-size: 14px; margin-bottom: 4px; }
+      .dropzone-hint { color: var(--muted); font-size: 13px; }
+      .dropzone input[type="file"] { display: none; }
+
+      .photo-grid {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 10px;
+      }
+      .photo-thumb {
+        position: relative;
+        aspect-ratio: 4 / 3;
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--bg);
+        border: 1px solid var(--line);
+      }
+      .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .photo-thumb .remove {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(11, 37, 69, 0.85);
+        color: white;
+        border: none;
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .photo-thumb .remove:hover { background: var(--navy); }
+      .photo-meta {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 10px;
-      }
-      .section-head h3 { margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
-      .output {
-        white-space: pre-wrap;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size: 13px;
-        background: #f8fafc;
-        border: 1px solid var(--line);
-        border-radius: 6px;
-        padding: 12px;
-        margin: 0;
-      }
-      .meta {
+        margin-top: 12px;
         font-size: 12px;
         color: var(--muted);
-        margin-top: 6px;
       }
-      .gap {
-        background: #fff8e1;
-        border-left: 3px solid #d4a017;
-        padding: 10px 14px;
-        border-radius: 4px;
-        font-size: 13px;
+      .photo-meta-warn { color: var(--warn-ink); }
+
+      /* Results */
+      .results { display: none; margin-top: 32px; }
+      .results.show { display: block; }
+      .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin-bottom: 16px;
       }
-      .gap strong { color: #7a5a00; }
-      details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
-      details { margin-top: 16px; }
+      .results-title {
+        font-weight: 500;
+        font-size: 20px;
+        color: var(--navy);
+        letter-spacing: -0.01em;
+      }
+      .gap-banner {
+        background: var(--warn-bg);
+        border: 1px solid var(--warn-border);
+        border-radius: var(--radius-card);
+        padding: 14px 18px;
+        margin-bottom: 16px;
+        font-size: 14px;
+        color: var(--warn-ink);
+        line-height: 1.5;
+      }
+      .gap-banner strong { color: var(--warn-ink); font-weight: 600; }
+
+      .output-card .card-header { margin-bottom: 12px; }
+      .output {
+        white-space: pre-wrap;
+        font-family: "Inter", sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--ink);
+        margin: 0;
+      }
+      .output-mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 13px;
+      }
+
+      details.debug { margin-top: 16px; }
+      details.debug summary {
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 13px;
+        list-style: none;
+      }
+      details.debug summary::-webkit-details-marker { display: none; }
+      details.debug pre {
+        margin-top: 10px;
+        padding: 14px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.55;
+        overflow-x: auto;
+      }
+
+      .site-footer {
+        max-width: 1024px;
+        margin: 0 auto;
+        padding: 32px 24px;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: center;
+      }
+
+      .spinner {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid rgba(11, 37, 69, 0.2);
+        border-top-color: var(--navy);
+        animation: spin 0.8s linear infinite;
+        display: inline-block;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
     </style>
   </head>
   <body>
-    <div class="container">
-      <header>
-        <h1>Compass Line Marine — Listing Generator</h1>
-        <p>Paste broker notes, optionally add photo URLs, and get a full listing package.</p>
-      </header>
+    <header class="site-header">
+      <div class="site-header-inner">
+        <svg class="logo-mark" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="1.5" />
+          <path d="M20 4 L23 20 L20 36 L17 20 Z" fill="currentColor" />
+          <path d="M4 20 L20 17 L36 20 L20 23 Z" fill="currentColor" opacity="0.55" />
+          <circle cx="20" cy="20" r="2" fill="#F7F7F4" />
+        </svg>
+        <div class="wordmark">
+          <span class="wordmark-primary">Compass Line Marine</span>
+          <span class="wordmark-tagline">by Compass Line Ventures</span>
+        </div>
+      </div>
+    </header>
 
-      <form id="form" class="card">
-        <div class="field">
-          <label for="notes">Broker notes <span class="hint">free-form — year, make, model, engines, hours, history, condition, price, contact</span></label>
-          <textarea id="notes" class="notes" placeholder="2018 Sea Ray Sundancer 370. 37' LOA. Twin MerCruiser 350 MAG, 320 hours total. Freshwater only..." required></textarea>
+    <main class="container">
+      <div class="page-intro">
+        <h1>Listing generator</h1>
+        <p>Paste broker notes, drop in the photos, and get a complete listing package — long description, social copy, email, and a recommended photo order — ready in under a minute.</p>
+      </div>
+
+      <form id="form" novalidate>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Boat details</span>
+            <span class="card-subtitle">Notes are extracted automatically</span>
+          </div>
+
+          <div class="field">
+            <label for="notes">Broker notes <span class="req">*</span></label>
+            <textarea id="notes" class="notes" placeholder="2018 Sea Ray Sundancer 370. 37' LOA. Twin MerCruiser 350 MAG, 320 hours total. Freshwater only, indoor heated winter storage..." required></textarea>
+            <div class="hint">Year, make, model, engines, hours, history, condition — whatever you have. Free-form is fine.</div>
+          </div>
+
+          <div class="grid-2-uneven field">
+            <div>
+              <label for="category">Boat category</label>
+              <select id="category">
+                <option value="">— Select —</option>
+                <option>Power cruiser</option>
+                <option>Center console</option>
+                <option>Sportfish</option>
+                <option>Cruising sailboat</option>
+                <option>Day sailer</option>
+                <option>Bowrider</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label for="price">Asking price</label>
+              <div class="price-input">
+                <input id="price" type="text" inputmode="numeric" placeholder="189,000" autocomplete="off" />
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="field">
-          <label for="urls">Photo URLs <span class="hint">optional — one per line, public https links</span></label>
-          <textarea id="urls" class="urls" placeholder="https://example.com/boat-starboard.jpg&#10;https://example.com/boat-helm.jpg"></textarea>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Broker contact</span>
+            <span class="card-subtitle">Used in every output — saved locally</span>
+          </div>
+          <div class="grid-2 field">
+            <div>
+              <label for="broker-name">Name</label>
+              <input id="broker-name" type="text" placeholder="Mike Wielhouwer" autocomplete="name" />
+            </div>
+            <div>
+              <label for="broker-company">Company</label>
+              <input id="broker-company" type="text" placeholder="Compass Line Marine" autocomplete="organization" />
+            </div>
+          </div>
+          <div class="grid-2 field">
+            <div>
+              <label for="broker-phone">Phone</label>
+              <input id="broker-phone" type="tel" placeholder="(555) 123-4567" autocomplete="tel" />
+            </div>
+            <div>
+              <label for="broker-email">Email</label>
+              <input id="broker-email" type="email" placeholder="mike@compasslinemarine.com" autocomplete="email" />
+            </div>
+          </div>
         </div>
-        <div class="actions">
-          <button type="submit" class="primary" id="submit">Generate listing</button>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Photos</span>
+            <span class="card-subtitle">Up to 25 · resized to 1600px before upload</span>
+          </div>
+          <div class="dropzone" id="dropzone" role="button" tabindex="0">
+            <svg class="dropzone-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <circle cx="9" cy="9" r="2"/>
+              <path d="M21 15l-5-5L5 21"/>
+            </svg>
+            <div class="dropzone-title">Drag photos here, or click to browse</div>
+            <div class="dropzone-hint">JPG, PNG, or WEBP · up to 25 images</div>
+            <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" multiple />
+          </div>
+          <div class="photo-grid" id="photo-grid"></div>
+          <div class="photo-meta" id="photo-meta" style="display:none;">
+            <span id="photo-count"></span>
+            <button type="button" class="btn-ghost" id="clear-photos">Remove all</button>
+          </div>
+        </div>
+
+        <div class="submit-row">
+          <button type="submit" class="btn btn-primary" id="submit">Generate listing</button>
           <span class="status" id="status"></span>
         </div>
       </form>
 
-      <div id="results" class="results"></div>
-    </div>
+      <section class="results" id="results" aria-live="polite"></section>
+    </main>
+
+    <footer class="site-footer">
+      Compass Line Ventures · Built for working brokers
+    </footer>
 
     <script>
+      const MAX_PHOTOS = 25;
+      const MAX_WIDTH = 1600;
+      const JPEG_QUALITY = 0.78;
+      const PAYLOAD_WARN_BYTES = 4.0 * 1024 * 1024;
+
       const SECTIONS = [
-        { key: "long_description", title: "Long description (YachtWorld / Boat Trader)" },
-        { key: "facebook_marketplace", title: "Facebook Marketplace" },
-        { key: "facebook_post", title: "Facebook post" },
-        { key: "instagram_caption", title: "Instagram caption" },
-        { key: "instagram_hashtags", title: "Instagram hashtags" },
-        { key: "linkedin_post", title: "LinkedIn post" },
-        { key: "email_blast", title: "Email blast" },
-        { key: "photo_order", title: "Recommended photo order" },
+        { key: "long_description", title: "Long description", subtitle: "YachtWorld / Boat Trader" },
+        { key: "facebook_marketplace", title: "Facebook Marketplace", subtitle: "Mobile-friendly listing copy" },
+        { key: "facebook_post", title: "Facebook post", subtitle: "Lifestyle-first feed post" },
+        { key: "instagram_caption", title: "Instagram caption", subtitle: "Hook + details + CTA" },
+        { key: "instagram_hashtags", title: "Instagram hashtags", subtitle: "Drop in below the caption" },
+        { key: "linkedin_post", title: "LinkedIn post", subtitle: "Professional / broker network" },
+        { key: "email_subject", title: "Email subject", subtitle: "For your blast database" },
+        { key: "email_body", title: "Email body", subtitle: "Personal-feel announcement" },
       ];
 
-      const form = document.getElementById("form");
-      const submit = document.getElementById("submit");
-      const status = document.getElementById("status");
-      const results = document.getElementById("results");
+      const PHOTO_CATEGORIES = {
+        exterior_starboard_wide: { label: "wide starboard exterior", slug: "exterior-starboard" },
+        exterior_port_wide: { label: "wide port exterior", slug: "exterior-port" },
+        bow: { label: "bow shot", slug: "bow" },
+        stern: { label: "stern shot", slug: "stern" },
+        aerial: { label: "aerial", slug: "aerial" },
+        on_water_running: { label: "on-water running shot", slug: "running" },
+        helm: { label: "helm", slug: "helm" },
+        cockpit: { label: "cockpit", slug: "cockpit" },
+        salon: { label: "main salon", slug: "salon" },
+        galley: { label: "galley", slug: "galley" },
+        berth_master: { label: "master berth", slug: "berth-master" },
+        berth_guest: { label: "guest berth", slug: "berth-guest" },
+        head: { label: "head", slug: "head" },
+        engine_room: { label: "engine room photo", slug: "engine-room" },
+        electronics: { label: "electronics close-up", slug: "electronics" },
+        detail: { label: "detail shot", slug: "detail" },
+        tower_or_hardtop: { label: "tower / hardtop", slug: "tower" },
+        swim_platform: { label: "swim platform", slug: "swim-platform" },
+        other: { label: "other", slug: "other" },
+      };
 
-      function setStatus(text, kind = "") {
-        status.textContent = text;
-        status.className = "status" + (kind ? " " + kind : "");
-      }
+      const photos = [];
+      let lastResult = null;
+
+      const $ = (id) => document.getElementById(id);
+      const form = $("form");
+      const submit = $("submit");
+      const status = $("status");
+      const results = $("results");
+      const dropzone = $("dropzone");
+      const fileInput = $("file-input");
+      const photoGrid = $("photo-grid");
+      const photoMeta = $("photo-meta");
+      const photoCount = $("photo-count");
+      const clearPhotos = $("clear-photos");
 
       function escape(s) {
         return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+      }
+      function setStatus(text, { kind = "", spinner = false } = {}) {
+        status.replaceChildren();
+        status.className = "status" + (kind ? " " + kind : "");
+        if (spinner) {
+          const sp = document.createElement("span");
+          sp.className = "spinner";
+          status.append(sp, document.createTextNode(" "));
+        }
+        if (text) status.append(document.createTextNode(text));
+      }
+
+      const jszipReady = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+        s.onload = resolve;
+        s.onerror = () => reject(new Error("Failed to load JSZip"));
+        document.head.appendChild(s);
+      });
+
+      const BROKER_KEY = "clm.broker.v1";
+      const brokerFields = {
+        name: $("broker-name"),
+        company: $("broker-company"),
+        phone: $("broker-phone"),
+        email: $("broker-email"),
+      };
+      function loadBroker() {
+        try {
+          const b = JSON.parse(localStorage.getItem(BROKER_KEY) ?? "{}");
+          for (const [key, el] of Object.entries(brokerFields)) {
+            if (b[key]) el.value = b[key];
+          }
+        } catch {}
+      }
+      function saveBroker() {
+        const b = Object.fromEntries(
+          Object.entries(brokerFields).map(([key, el]) => [key, el.value.trim()])
+        );
+        try { localStorage.setItem(BROKER_KEY, JSON.stringify(b)); } catch {}
+      }
+      Object.values(brokerFields).forEach((el) => el.addEventListener("change", saveBroker));
+      loadBroker();
+
+      const priceInput = $("price");
+      priceInput.addEventListener("input", () => {
+        const digits = priceInput.value.replace(/\D/g, "");
+        priceInput.value = digits ? Number(digits).toLocaleString("en-US") : "";
+      });
+
+      function updatePhotoMeta() {
+        if (photos.length === 0) {
+          photoMeta.style.display = "none";
+          return;
+        }
+        photoMeta.style.display = "flex";
+        const totalBytes = photos.reduce((sum, p) => sum + p.bytes, 0);
+        const mb = (totalBytes / 1024 / 1024).toFixed(2);
+        const overLimit = totalBytes > PAYLOAD_WARN_BYTES;
+        photoCount.innerHTML = `<span class="${overLimit ? "photo-meta-warn" : ""}">${photos.length} photo${photos.length === 1 ? "" : "s"} · ${mb} MB ${overLimit ? "· may be too large to upload, remove a few" : ""}</span>`;
+      }
+
+      async function compressImage(file) {
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, MAX_WIDTH / bitmap.width);
+        const w = Math.round(bitmap.width * scale);
+        const h = Math.round(bitmap.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(bitmap, 0, 0, w, h);
+        bitmap.close();
+        const blob = await new Promise((resolve) =>
+          canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY)
+        );
+        const dataUrl = await new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result);
+          fr.onerror = reject;
+          fr.readAsDataURL(blob);
+        });
+        return { dataUrl, bytes: blob.size };
+      }
+
+      async function processOne(file) {
+        try {
+          const { dataUrl, bytes } = await compressImage(file);
+          const entry = {
+            id: Math.random().toString(36).slice(2),
+            originalFile: file,
+            originalName: file.name,
+            dataUrl,
+            bytes,
+          };
+          photos.push(entry);
+          renderThumb(entry);
+          updatePhotoMeta();
+        } catch (err) {
+          console.error("photo compress failed", err);
+        }
+      }
+
+      async function addFiles(fileList) {
+        const remaining = MAX_PHOTOS - photos.length;
+        const incoming = Array.from(fileList).slice(0, remaining);
+        if (incoming.length === 0) return;
+        setStatus(`Compressing ${incoming.length} photo${incoming.length === 1 ? "" : "s"}…`);
+        const CONCURRENCY = 3;
+        for (let i = 0; i < incoming.length; i += CONCURRENCY) {
+          await Promise.all(incoming.slice(i, i + CONCURRENCY).map(processOne));
+        }
+        setStatus("");
+      }
+
+      function renderThumb(entry) {
+        const div = document.createElement("div");
+        div.className = "photo-thumb";
+        div.dataset.id = entry.id;
+        div.innerHTML = `<img alt="" src="${entry.dataUrl}" /><button type="button" class="remove" aria-label="Remove">×</button>`;
+        div.querySelector(".remove").addEventListener("click", () => {
+          const idx = photos.findIndex((p) => p.id === entry.id);
+          if (idx >= 0) photos.splice(idx, 1);
+          div.remove();
+          updatePhotoMeta();
+        });
+        photoGrid.appendChild(div);
+      }
+
+      dropzone.addEventListener("click", () => fileInput.click());
+      dropzone.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+      });
+      fileInput.addEventListener("change", (e) => { addFiles(e.target.files); fileInput.value = ""; });
+      ["dragenter", "dragover"].forEach((ev) =>
+        dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add("dragover"); })
+      );
+      dropzone.addEventListener("dragleave", (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("dragover");
+      });
+      dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("dragover");
+        const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
+        addFiles(files);
+      });
+      clearPhotos.addEventListener("click", () => {
+        photos.length = 0;
+        photoGrid.innerHTML = "";
+        updatePhotoMeta();
+      });
+
+      function readListingValue(listing, key) {
+        if (key === "email_subject") return listing.email_blast?.subject ?? "";
+        if (key === "email_body") return listing.email_blast?.body ?? "";
+        return listing[key];
       }
 
       function formatSection(key, value) {
         if (key === "instagram_hashtags" && Array.isArray(value)) {
           return value.map((t) => (t.startsWith("#") ? t : "#" + t)).join(" ");
         }
-        if (key === "photo_order" && Array.isArray(value)) {
-          return value.join(", ");
-        }
-        if (key === "email_blast" && value && typeof value === "object") {
-          return "Subject: " + value.subject + "\n\n" + value.body;
-        }
         return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+      }
+
+      function buildGapText(photoSummary) {
+        const missing = photoSummary?.missing_categories ?? [];
+        const issues = photoSummary?.quality_issues ?? [];
+        if (!missing.length && !issues.length) return null;
+        const parts = [];
+        if (missing.length) {
+          const friendly = missing.map((c) => PHOTO_CATEGORIES[c]?.label ?? c.replaceAll("_", " "));
+          let phrase;
+          if (friendly.length === 1) phrase = `You're missing a ${friendly[0]}`;
+          else if (friendly.length === 2) phrase = `You're missing a ${friendly[0]} and a ${friendly[1]}`;
+          else phrase = `You're missing ${friendly.slice(0, -1).join(", ")}, and a ${friendly.at(-1)}`;
+          parts.push(`${phrase} — buyers always ask.`);
+        }
+        if (issues.length) parts.push(issues.join(" "));
+        return parts.join(" ");
       }
 
       function renderResults(data) {
         const { listing, boatData, photoSummary } = data;
+        lastResult = data;
         const parts = [];
 
-        const gaps = photoSummary?.missing_categories ?? [];
-        const issues = photoSummary?.quality_issues ?? [];
-        if (gaps.length || issues.length) {
-          parts.push(
-            `<div class="gap"><strong>Photo gap report:</strong> ${
-              gaps.length ? "missing — " + escape(gaps.join(", ")) : ""
-            }${gaps.length && issues.length ? " · " : ""}${
-              issues.length ? "issues — " + escape(issues.join("; ")) : ""
-            }</div>`
-          );
+        parts.push(`
+          <div class="results-header">
+            <div class="results-title">Listing package</div>
+            <button type="button" class="btn btn-outline" id="download-zip">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download all files
+            </button>
+          </div>
+        `);
+
+        const gap = buildGapText(photoSummary);
+        if (gap) {
+          parts.push(`<div class="gap-banner"><strong>Photo gap analysis.</strong> ${escape(gap)}</div>`);
         }
 
-        for (const { key, title } of SECTIONS) {
-          if (!(key in listing)) continue;
-          const text = formatSection(key, listing[key]);
+        for (const { key, title, subtitle } of SECTIONS) {
+          const value = readListingValue(listing, key);
+          if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) continue;
+          const text = formatSection(key, value);
           parts.push(`
-            <div class="card">
-              <div class="section-head">
-                <h3>${escape(title)}</h3>
-                <button class="copy" data-text="${escape(text)}">Copy</button>
+            <div class="card output-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">${escape(title)}</div>
+                  <div class="card-subtitle">${escape(subtitle)}</div>
+                </div>
+                <button type="button" class="btn btn-outline copy-btn" data-text="${escape(text)}">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copy to clipboard
+                </button>
               </div>
-              <pre class="output">${escape(text)}</pre>
+              <pre class="output${key === "instagram_hashtags" ? " output-mono" : ""}">${escape(text)}</pre>
             </div>
           `);
         }
 
         parts.push(`
-          <details>
-            <summary>Show extracted boat data + photo summary (JSON)</summary>
-            <pre class="output" style="margin-top:10px;">${escape(
-              JSON.stringify({ boatData, photoSummary }, null, 2)
-            )}</pre>
+          <details class="debug">
+            <summary>Show extracted data &amp; photo analysis (JSON)</summary>
+            <pre>${escape(JSON.stringify({ boatData, photoSummary }, null, 2))}</pre>
           </details>
         `);
 
         results.innerHTML = parts.join("");
         results.classList.add("show");
+        results.scrollIntoView({ behavior: "smooth", block: "start" });
 
-        results.querySelectorAll("button.copy").forEach((btn) => {
+        results.querySelectorAll(".copy-btn").forEach((btn) => {
           btn.addEventListener("click", async () => {
             try {
               await navigator.clipboard.writeText(btn.dataset.text);
-              const orig = btn.textContent;
-              btn.textContent = "Copied";
-              setTimeout(() => (btn.textContent = orig), 1200);
+              const orig = btn.innerHTML;
+              btn.innerHTML = "Copied";
+              setTimeout(() => (btn.innerHTML = orig), 1200);
             } catch {
               btn.textContent = "Copy failed";
             }
           });
         });
+        $("download-zip").addEventListener("click", downloadZip);
+      }
+
+      function listingBaseName(boatData) {
+        const bits = [boatData.year, boatData.make, boatData.model].filter(Boolean);
+        const slug = bits.join(" ").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        return slug || "listing";
+      }
+
+      function buildTextFiles(listing) {
+        const files = [];
+        files.push(["long-description.txt", listing.long_description ?? ""]);
+        files.push(["facebook-marketplace.txt", listing.facebook_marketplace ?? ""]);
+        files.push(["facebook-post.txt", listing.facebook_post ?? ""]);
+        const ig = listing.instagram_caption ?? "";
+        const tags = Array.isArray(listing.instagram_hashtags)
+          ? listing.instagram_hashtags.map((t) => (t.startsWith("#") ? t : "#" + t)).join(" ")
+          : "";
+        files.push(["instagram.txt", `${ig}\n\n${tags}\n`]);
+        files.push(["linkedin.txt", listing.linkedin_post ?? ""]);
+        const email = listing.email_blast ?? {};
+        files.push(["email.txt", `Subject: ${email.subject ?? ""}\n\n${email.body ?? ""}\n`]);
+        return files;
+      }
+
+      async function downloadZip(e) {
+        const btn = e.currentTarget;
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner"></span> Packaging…`;
+        try {
+          await jszipReady;
+          const zip = new JSZip();
+          const { listing, boatData, photoSummary } = lastResult;
+          const base = listingBaseName(boatData);
+          const root = zip.folder(base);
+
+          for (const [name, content] of buildTextFiles(listing)) {
+            root.file(name, content);
+          }
+          root.file("boat-data.json", JSON.stringify(boatData, null, 2));
+          root.file("photo-analysis.json", JSON.stringify(photoSummary, null, 2));
+
+          const order = Array.isArray(listing.photo_order) ? listing.photo_order : [];
+          const photoFolder = root.folder("photos");
+          let pos = 1;
+          for (const idx of order) {
+            const photo = photos[idx - 1];
+            if (!photo) continue;
+            const summary = (photoSummary?.photos ?? []).find((p) => p.index === idx);
+            const slug = summary ? (PHOTO_CATEGORIES[summary.category]?.slug ?? "photo") : "photo";
+            const ext = (photo.originalName.match(/\.[a-z0-9]+$/i) ?? [".jpg"])[0];
+            const name = `${String(pos).padStart(2, "0")}-${slug}${ext}`;
+            photoFolder.file(name, photo.originalFile);
+            pos++;
+          }
+
+          const blob = await zip.generateAsync({ type: "blob" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${base}.zip`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          alert("Download failed: " + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = orig;
+        }
       }
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const rawInput = document.getElementById("notes").value.trim();
-        const photoUrls = document
-          .getElementById("urls")
-          .value.split("\n")
-          .map((s) => s.trim())
-          .filter(Boolean);
+        const rawInput = $("notes").value.trim();
+        const category = $("category").value;
+        const priceDigits = $("price").value.replace(/[^\d]/g, "");
+        const askingPrice = priceDigits ? Number(priceDigits) : null;
+        const broker = {
+          name: $("broker-name").value.trim() || null,
+          phone: $("broker-phone").value.trim() || null,
+          email: $("broker-email").value.trim() || null,
+          company: $("broker-company").value.trim() || null,
+        };
 
         if (!rawInput) {
-          setStatus("Add broker notes first.", "error");
+          setStatus("Add broker notes first.", { kind: "error" });
+          $("notes").focus();
           return;
         }
 
+        saveBroker();
         submit.disabled = true;
         results.classList.remove("show");
         results.innerHTML = "";
-        setStatus("Generating… this typically takes 20–45 seconds.");
+        setStatus("Generating — about 30 seconds…", { spinner: true });
 
         try {
           const res = await fetch("/api/generate-listing", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ rawInput, photoUrls }),
+            body: JSON.stringify({
+              rawInput,
+              category: category || null,
+              askingPrice,
+              broker,
+              photos: photos.map((p) => p.dataUrl),
+            }),
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-          setStatus("Done.", "good");
+          setStatus("Listing package ready.", { kind: "good" });
           renderResults(data);
         } catch (err) {
-          setStatus("Error: " + err.message, "error");
+          setStatus("Error — " + err.message, { kind: "error" });
         } finally {
           submit.disabled = false;
         }
