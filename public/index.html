@@ -668,34 +668,21 @@
 
       const CHECK_SVG = `<svg class="loader-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
 
-      function startLoader(hasPhotos) {
-        const steps = [
-          { id: "loader-step-notes", delay: 0 },
-          { id: "loader-step-photos", delay: 2500, skip: !hasPhotos },
-          { id: "loader-step-write", delay: hasPhotos ? 11000 : 5000 },
-        ];
-        const active = steps.filter((s) => !s.skip);
+      const loaderRows = {
+        notes: $("loader-step-notes"),
+        photos: $("loader-step-photos"),
+        write: $("loader-step-write"),
+      };
 
-        for (const step of steps) {
-          $(step.id).hidden = !!step.skip;
-        }
-        for (const step of active) {
-          markPending($(step.id));
-        }
+      function showLoader(hasPhotos) {
+        loaderRows.photos.hidden = !hasPhotos;
+        markPending(loaderRows.notes);
+        if (hasPhotos) markPending(loaderRows.photos);
+        markPending(loaderRows.write);
         loader.hidden = false;
-
-        const timers = [];
-        active.forEach((step, i) => {
-          timers.push(setTimeout(() => {
-            for (let j = 0; j < i; j++) markDone($(active[j].id));
-            markActive($(step.id));
-          }, step.delay));
-        });
-
-        return () => {
-          timers.forEach(clearTimeout);
-          loader.hidden = true;
-        };
+      }
+      function hideLoader() {
+        loader.hidden = true;
       }
 
       function markPending(row) {
@@ -716,6 +703,43 @@
         svg.setAttribute("data-role", "indicator");
         ind.replaceWith(svg);
         row.querySelector('[data-role="text"]').className = "loader-text loader-text-done";
+      }
+
+      async function callApi(path, body) {
+        const res = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        return data;
+      }
+
+      const EMPTY_PHOTO_SUMMARY = { photos: [], missing_categories: [], quality_issues: [] };
+
+      async function runPipeline({ rawInput, category, askingPrice, broker, photoDataUrls }) {
+        const hasPhotos = photoDataUrls.length > 0;
+
+        markActive(loaderRows.notes);
+        if (hasPhotos) markActive(loaderRows.photos);
+
+        const dataPromise = callApi("/api/extract-boat-data", {
+          rawInput, category, askingPrice, broker,
+        }).then((r) => { markDone(loaderRows.notes); return r.boatData; });
+
+        const photoPromise = hasPhotos
+          ? callApi("/api/analyze-photos", { photos: photoDataUrls })
+              .then((r) => { markDone(loaderRows.photos); return r.photoSummary; })
+          : Promise.resolve(EMPTY_PHOTO_SUMMARY);
+
+        const [boatData, photoSummary] = await Promise.all([dataPromise, photoPromise]);
+
+        markActive(loaderRows.write);
+        const { listing } = await callApi("/api/generate-listing", { boatData, photoSummary });
+        markDone(loaderRows.write);
+
+        return { boatData, photoSummary, listing };
       }
 
       function escape(s) {
@@ -1064,27 +1088,21 @@
         results.classList.remove("show");
         results.innerHTML = "";
         setStatus("");
-        const stopLoader = startLoader(photos.length > 0);
+        showLoader(photos.length > 0);
 
         try {
-          const res = await fetch("/api/generate-listing", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              rawInput,
-              category: category || null,
-              askingPrice,
-              broker,
-              photos: photos.map((p) => p.dataUrl),
-            }),
+          const data = await runPipeline({
+            rawInput,
+            category: category || null,
+            askingPrice,
+            broker,
+            photoDataUrls: photos.map((p) => p.dataUrl),
           });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-          stopLoader();
+          hideLoader();
           setStatus("Listing package ready.", { kind: "good" });
           renderResults(data);
         } catch (err) {
-          stopLoader();
+          hideLoader();
           setStatus("Error — " + err.message, { kind: "error" });
         } finally {
           submit.disabled = false;

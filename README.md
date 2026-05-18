@@ -84,8 +84,12 @@ src/
 
 The repo also ships as a Vercel-deployable web app:
 
-- `public/index.html` — single-page form for broker notes + optional photo URLs
-- `api/generate-listing.js` — serverless endpoint that runs the full pipeline (Node runtime, 60s max duration)
+- `public/index.html` — single-page form with drag-and-drop photo upload, client-side image compression, and ZIP export of the full listing package
+- `api/extract-boat-data.js` — POST `{ rawInput, category, askingPrice, broker }` → `{ boatData }` (Haiku)
+- `api/analyze-photos.js` — POST `{ photos: [dataUrl, ...] }` → `{ photoSummary }` (Haiku vision)
+- `api/generate-listing.js` — POST `{ boatData, photoSummary }` → `{ listing }` (Sonnet)
+- `api/_lib.js` — shared method/auth/error guard
+- The browser orchestrates the three calls: extract + analyze run in parallel, then generate runs once both finish. The on-screen step loader marks each row complete when its API actually returns, so the progress is real, not timed.
 
 To deploy:
 
