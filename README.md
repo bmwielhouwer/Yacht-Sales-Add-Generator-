@@ -80,6 +80,23 @@ src/
   config.js                Anthropic client + model IDs
 ```
 
+## Web app (Vercel)
+
+The repo also ships as a Vercel-deployable web app:
+
+- `public/index.html` — single-page form for broker notes + optional photo URLs
+- `api/generate-listing.js` — serverless endpoint that runs the full pipeline (Node runtime, 60s max duration)
+
+To deploy:
+
+1. Connect the repo on Vercel.
+2. In **Project Settings → Environment Variables**, add `ANTHROPIC_API_KEY` (Production + Preview + Development).
+3. Redeploy. Visit the deployment's root URL to see the form.
+
+If you've already deployed and got a 404 at `/`, you just needed `public/index.html` — that's now in this commit. Redeploying picks it up automatically.
+
+Photos in the web flow use **public image URLs** (one per line). The CLI continues to accept local file paths; `src/analyzePhotos.js` detects URLs vs paths automatically.
+
 ## Iterating on the prompts
 
 See `docs/narrative-v1.md` for the iteration plan. Short version: save 3–5 gold-standard outputs, regenerate against the same inputs whenever you tweak the prompt, and compare.

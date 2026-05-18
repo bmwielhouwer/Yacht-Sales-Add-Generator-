@@ -13,28 +13,31 @@ const MEDIA_TYPES = {
   ".gif": "image/gif",
 };
 
-function imageBlock(path) {
-  const mediaType = MEDIA_TYPES[extname(path).toLowerCase()];
-  if (!mediaType) {
-    throw new Error(`Unsupported image type: ${path}`);
+function imageBlock(source) {
+  if (/^https?:\/\//i.test(source)) {
+    return { type: "image", source: { type: "url", url: source } };
   }
-  const data = readFileSync(path).toString("base64");
+  const mediaType = MEDIA_TYPES[extname(source).toLowerCase()];
+  if (!mediaType) {
+    throw new Error(`Unsupported image type: ${source}`);
+  }
+  const data = readFileSync(source).toString("base64");
   return {
     type: "image",
     source: { type: "base64", media_type: mediaType, data },
   };
 }
 
-export async function analyzePhotos(photoPaths) {
-  if (photoPaths.length === 0) {
+export async function analyzePhotos(photoSources) {
+  if (photoSources.length === 0) {
     return { photos: [], missing_categories: [], quality_issues: [] };
   }
 
   const content = [
-    ...photoPaths.map(imageBlock),
+    ...photoSources.map(imageBlock),
     {
       type: "text",
-      text: `Classify these ${photoPaths.length} photos per the system instructions. They are 1-indexed in the order shown.`,
+      text: `Classify these ${photoSources.length} photos per the system instructions. They are 1-indexed in the order shown.`,
     },
   ];
 
