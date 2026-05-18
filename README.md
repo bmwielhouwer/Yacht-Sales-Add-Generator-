@@ -96,9 +96,25 @@ To deploy:
 1. Connect the repo on Vercel.
 2. In **Project Settings → Environment Variables**, set:
    - `ANTHROPIC_API_KEY` — your Anthropic key.
-   - `MARINE_ACCESS_CODES` — comma-separated list of valid access codes (e.g. `CLM-BRIAN-TEST,CLM-OPS-DEMO`). Codes are matched case-insensitively after trimming. The app refuses every API call without a valid code in the `X-Access-Code` header.
-   Apply both to Production + Preview + Development.
-3. Redeploy. Visit `/` to enter an access code; visit `/pricing` and `/success` (no gate) for the marketing pages.
+   - `MARINE_ACCESS_CODES` — comma-separated manual override codes (e.g. `CLM-BRIAN-TEST`). Use this for ops / testing; production codes are issued from Redis. Matched case-insensitively.
+   - `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` — Upstash Redis credentials. Codes issued via Stripe live here. Key namespaces: `code:CLM-…` (the record), `sub:sub_…` (subscription → code reverse index), `session:cs_…` (idempotency marker).
+   - `RESEND_API_KEY` — Resend API key. Welcome emails ship from `noreply@compasslineventures.com`.
+   - `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` — Stripe live credentials. Webhook lives at `/api/stripe/webhook` and listens for `checkout.session.completed` (issues a code, sends the welcome email) and `customer.subscription.deleted` (sets `active: false`, preserves the record).
+   Apply all to Production + Preview + Development.
+3. In **Stripe Dashboard → Developers → Webhooks**, add an endpoint `https://<your-domain>/api/stripe/webhook` with the two events above. Copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
+4. Redeploy. Visit `/` to enter an access code; visit `/pricing` for the public pricing page; Stripe redirects to `/success` after checkout.
+
+### Tier detection
+
+The webhook reads `session.amount_total`:
+
+| Amount (cents) | Tier      | Mode         |
+|----------------|-----------|--------------|
+| 4900           | `LISTING` | payment      |
+| 25000          | `STUDIO`  | subscription |
+| 39900          | `SUITE`   | subscription |
+
+Anything else throws — adjust `TIER_BY_AMOUNT_CENTS` in `api/_codes.js` if you change Stripe pricing.
 
 If you've already deployed and got a 404 at `/`, you just needed `public/index.html` — that's now in this commit. Redeploying picks it up automatically.
 

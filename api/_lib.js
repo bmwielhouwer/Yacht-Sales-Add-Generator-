@@ -1,19 +1,30 @@
-function validCodes() {
+import { isCodeActive } from "./_codes.js";
+
+function envOverrides() {
   const raw = process.env.MARINE_ACCESS_CODES;
   if (!raw) return null;
   return new Set(
     raw
       .split(",")
       .map((s) => s.trim().toUpperCase())
-      .filter(Boolean)
+      .filter(Boolean),
   );
 }
 
-export function isValidAccessCode(code) {
-  const codes = validCodes();
-  if (!codes) return false;
+export async function isValidAccessCode(code) {
   if (typeof code !== "string") return false;
-  return codes.has(code.trim().toUpperCase());
+  const normalized = code.trim().toUpperCase();
+  if (!normalized) return false;
+
+  const overrides = envOverrides();
+  if (overrides?.has(normalized)) return true;
+
+  try {
+    return await isCodeActive(normalized);
+  } catch (err) {
+    console.error("Redis lookup failed:", err);
+    return false;
+  }
 }
 
 export function withGuard(handler, { requireCode = true } = {}) {
@@ -29,15 +40,8 @@ export function withGuard(handler, { requireCode = true } = {}) {
       });
     }
     if (requireCode) {
-      const codes = validCodes();
-      if (!codes) {
-        return res.status(500).json({
-          error:
-            "MARINE_ACCESS_CODES is not set on this deployment. Add it in Vercel → Project Settings → Environment Variables and redeploy.",
-        });
-      }
       const supplied = req.headers["x-access-code"];
-      if (!isValidAccessCode(supplied)) {
+      if (!(await isValidAccessCode(supplied))) {
         return res
           .status(403)
           .json({ error: "Access code required. Refresh the page and re-enter your code." });

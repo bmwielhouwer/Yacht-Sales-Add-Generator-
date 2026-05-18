@@ -12,7 +12,10 @@
     "example": "node src/cli.js --input examples/raw_input.example.txt --photos examples/photos"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.0"
+    "@anthropic-ai/sdk": "^0.32.0",
+    "@upstash/redis": "^1.34.3",
+    "resend": "^4.0.1",
+    "stripe": "^17.4.0"
   },
   "engines": {
     "node": ">=18"
