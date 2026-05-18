@@ -574,23 +574,6 @@
         return typeof value === "string" ? value : JSON.stringify(value, null, 2);
       }
 
-      function buildGapText(photoSummary) {
-        const missing = photoSummary?.missing_categories ?? [];
-        const issues = photoSummary?.quality_issues ?? [];
-        if (!missing.length && !issues.length) return null;
-        const parts = [];
-        if (missing.length) {
-          const friendly = missing.map((c) => PHOTO_CATEGORIES[c]?.label ?? c.replaceAll("_", " "));
-          let phrase;
-          if (friendly.length === 1) phrase = `You're missing a ${friendly[0]}`;
-          else if (friendly.length === 2) phrase = `You're missing a ${friendly[0]} and a ${friendly[1]}`;
-          else phrase = `You're missing ${friendly.slice(0, -1).join(", ")}, and a ${friendly.at(-1)}`;
-          parts.push(`${phrase} — buyers always ask.`);
-        }
-        if (issues.length) parts.push(issues.join(" "));
-        return parts.join(" ");
-      }
-
       const PHOTO_LAYOUTS = {
         long_description: "interleave",
         facebook_marketplace: "hero-grid",
@@ -705,7 +688,74 @@
         return "";
       }
 
+      function buildRecommendedOrderSection(listing, photoSummary) {
+        if (photos.length === 0) return "";
+
+        const orderRaw = Array.isArray(listing?.photo_order) ? listing.photo_order : [];
+        if (orderRaw.length === 0) {
+          return `
+            <div class="card output-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Recommended photo order</div>
+                </div>
+              </div>
+              <div class="error-callout">Photo analysis couldn't complete — please try again.</div>
+            </div>
+          `;
+        }
+
+        const summaryByIdx = new Map(
+          (photoSummary?.photos ?? []).map((p) => [p.index, p])
+        );
+        const ordered = buildPhotoOrder(listing);
+
+        const missing = photoSummary?.missing_categories ?? [];
+        let gapHtml = "";
+        if (missing.length) {
+          const friendly = missing.map((c) => PHOTO_CATEGORIES[c]?.label ?? c.replaceAll("_", " "));
+          gapHtml = `<div class="gap-callout"><strong>You're missing:</strong> ${escape(friendly.join(", "))}. Buyers always ask for these.</div>`;
+        }
+
+        const items = ordered.map((idx, pos) => {
+          const photo = photos[idx - 1];
+          if (!photo) return "";
+          const meta = summaryByIdx.get(idx);
+          const catKey = meta?.category;
+          const catLabel = catKey ? (PHOTO_CATEGORIES[catKey]?.label ?? catKey.replaceAll("_", " ")) : "photo";
+          const label = pos === 0 ? `Hero shot — ${catLabel}` : catLabel;
+          const quality = meta?.quality;
+          const warn = quality && quality !== "good"
+            ? `<div class="photo-quality-warn">⚠ ${escape(quality)} — consider a retake</div>`
+            : "";
+          return `
+            <figure class="order-card">
+              <div class="order-photo-img">
+                <span class="order-num">${pos + 1}</span>
+                <img alt="${escape(label)}" src="${photo.dataUrl}" />
+              </div>
+              <figcaption class="order-label">${escape(label)}</figcaption>
+              ${warn}
+            </figure>
+          `;
+        }).join("");
+
+        return `
+          <div class="card output-card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Recommended photo order</div>
+                <div class="card-subtitle">Post your photos in this sequence</div>
+              </div>
+            </div>
+            ${gapHtml}
+            <div class="order-grid">${items}</div>
+          </div>
+        `;
+      }
+
       function renderResults(data) {
+        console.log("API response:", data);
         const { listing, boatData, photoSummary } = data;
         lastResult = data;
         const parts = [];
@@ -720,10 +770,8 @@
           </div>
         `);
 
-        const gap = buildGapText(photoSummary);
-        if (gap) {
-          parts.push(`<div class="gap-banner"><strong>Photo gap analysis.</strong> ${escape(gap)}</div>`);
-        }
+        const orderSection = buildRecommendedOrderSection(listing, photoSummary);
+        if (orderSection) parts.push(orderSection);
 
         const summaryByIdx = new Map(
           (photoSummary?.photos ?? []).map((p) => [p.index, p])
@@ -829,9 +877,11 @@
             const photo = photos[idx - 1];
             if (!photo) continue;
             const summary = (photoSummary?.photos ?? []).find((p) => p.index === idx);
-            const slug = summary ? (PHOTO_CATEGORIES[summary.category]?.slug ?? "photo") : "photo";
+            const rawSlug = summary ? (PHOTO_CATEGORIES[summary.category]?.slug ?? "photo") : "photo";
+            const slug = rawSlug.replace(/-/g, "_");
             const ext = (photo.originalName.match(/\.[a-z0-9]+$/i) ?? [".jpg"])[0];
-            const name = `${String(pos).padStart(2, "0")}-${slug}${ext}`;
+            const prefix = pos === 1 ? "hero_" : "";
+            const name = `${String(pos).padStart(2, "0")}_${prefix}${slug}${ext}`;
             photoFolder.file(name, photo.originalFile);
             pos++;
           }
