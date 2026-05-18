@@ -610,7 +610,7 @@
           if (!seen.has(i)) ordered.push(i);
         }
 
-        const items = ordered.map((idx, pos) => {
+        const photoFor = (idx, pos) => {
           const photo = photos[idx - 1];
           if (!photo) return "";
           const cat = summaryByIdx.get(idx)?.category;
@@ -618,23 +618,66 @@
           return `
             <figure class="listing-photo">
               <div class="listing-photo-img">
-                <span class="listing-photo-num">${pos + 1}</span>
+                <span class="listing-photo-num">${pos}</span>
                 <img alt="${escape(label)}" src="${photo.dataUrl}" />
               </div>
-              <figcaption>${escape(label)}</figcaption>
+              <figcaption>Photo ${pos} — ${escape(label)}</figcaption>
             </figure>
           `;
-        }).join("");
+        };
+
+        const text = listing?.long_description ?? "";
+        const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+        const blocks = [];
+
+        // Hero photo first.
+        const heroIdx = ordered[0];
+        if (heroIdx) blocks.push(photoFor(heroIdx, 1));
+
+        // Distribute remaining photos between paragraphs.
+        const rest = ordered.slice(1);
+        if (paragraphs.length > 0) {
+          const slots = Math.max(1, paragraphs.length - 1);
+          const perSlot = Math.ceil(rest.length / slots);
+          let cursor = 0;
+          paragraphs.forEach((p, i) => {
+            blocks.push(`<p class="preview-para">${escape(p)}</p>`);
+            if (i < paragraphs.length - 1 && cursor < rest.length) {
+              const chunk = rest.slice(cursor, cursor + perSlot);
+              cursor += perSlot;
+              if (chunk.length) {
+                const items = chunk
+                  .map((idx, j) => photoFor(idx, cursor - chunk.length + j + 2))
+                  .join("");
+                blocks.push(`<div class="preview-photo-row">${items}</div>`);
+              }
+            }
+          });
+          if (cursor < rest.length) {
+            const chunk = rest.slice(cursor);
+            const items = chunk
+              .map((idx, j) => photoFor(idx, cursor + j + 2))
+              .join("");
+            blocks.push(`<div class="preview-photo-row">${items}</div>`);
+          }
+        } else if (rest.length) {
+          const items = rest.map((idx, j) => photoFor(idx, j + 2)).join("");
+          blocks.push(`<div class="preview-photo-row">${items}</div>`);
+        }
 
         return `
           <div class="card output-card">
             <div class="card-header">
               <div>
-                <div class="card-title">Photos in this listing</div>
-                <div class="card-subtitle">Your uploads, ordered for the post</div>
+                <div class="card-title">Posting preview</div>
+                <div class="card-subtitle">Long description with photos in the recommended order</div>
               </div>
+              <button type="button" class="btn btn-outline copy-btn" data-text="${escape(text)}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy text only
+              </button>
             </div>
-            <div class="listing-photo-grid">${items}</div>
+            <div class="listing-preview">${blocks.join("")}</div>
           </div>
         `;
       }
@@ -662,7 +705,9 @@
         const gallery = buildPhotoGallery(listing, photoSummary);
         if (gallery) parts.push(gallery);
 
+        const hasPreview = gallery !== null;
         for (const { key, title, subtitle } of SECTIONS) {
+          if (key === "long_description" && hasPreview) continue;
           const value = readListingValue(listing, key);
           if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) continue;
           const text = formatSection(key, value);

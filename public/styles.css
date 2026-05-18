@@ -433,6 +433,26 @@ select { appearance: none; background-image: url("data:image/svg+xml;utf8,<svg x
   color: var(--muted);
   text-transform: capitalize;
 }
+
+.listing-preview { display: flex; flex-direction: column; gap: 18px; }
+.listing-preview .preview-para {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+.listing-preview .preview-photo-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 4px 0;
+}
+.listing-preview .listing-photo:first-child:only-child .listing-photo-img,
+.listing-preview > .listing-photo:first-child .listing-photo-img {
+  aspect-ratio: 16 / 9;
+}
 .output {
   white-space: pre-wrap;
   font-family: "Inter", sans-serif;
