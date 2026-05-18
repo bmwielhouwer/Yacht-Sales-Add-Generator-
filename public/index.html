@@ -28,14 +28,16 @@
         --warn-ink: #6b5400;
         --radius-card: 12px;
         --radius-input: 8px;
-        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
-        --shadow-md: 0 4px 16px rgba(11, 37, 69, 0.06);
+        --shadow-sm: 0 2px 8px rgba(11, 37, 69, 0.06), 0 1px 2px rgba(11, 37, 69, 0.04);
+        --shadow-md: 0 4px 16px rgba(11, 37, 69, 0.08);
+        --hero-image: url("https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=2400&h=560&fit=crop&q=80");
       }
       * { box-sizing: border-box; }
       html, body {
         margin: 0;
         padding: 0;
-        background: var(--bg);
+        background-color: var(--bg);
+        background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2280%22%20height%3D%2280%22%20viewBox%3D%220%200%2080%2080%22%3E%3Cpath%20d%3D%22M80%200H0v80%22%20fill%3D%22none%22%20stroke%3D%22%231a1a1a%22%20stroke-width%3D%220.5%22%20stroke-opacity%3D%220.03%22%2F%3E%3C%2Fsvg%3E");
         color: var(--ink);
         font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         font-size: 15px;
@@ -78,29 +80,77 @@
         letter-spacing: -0.02em;
       }
 
-      .horizon {
-        height: 40px;
-        background: var(--bg);
+      .hero {
+        position: relative;
+        width: 100%;
+        height: 280px;
+        background-image: var(--hero-image);
+        background-size: cover;
+        background-position: center 55%;
         overflow: hidden;
         line-height: 0;
       }
-      .horizon svg {
+      .hero::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(11, 37, 69, 0.55);
+        pointer-events: none;
+      }
+      .hero-text {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #FFFFFF;
+        font-family: "Inter", sans-serif;
+        font-weight: 400;
+        font-size: 18px;
+        letter-spacing: 0.05em;
+        text-align: center;
+        padding: 0 24px;
+        line-height: 1.4;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+      }
+      .hero-wave {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
         width: 100%;
-        height: 100%;
+        height: 40px;
+        z-index: 2;
         display: block;
       }
 
-      .container { max-width: 1024px; margin: 0 auto; padding: 40px 24px 80px; }
+      .what-you-get {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 18px;
+        margin-bottom: 24px;
+        background: rgba(200, 169, 81, 0.10);
+        border: 1px solid rgba(200, 169, 81, 0.35);
+        border-radius: 999px;
+        font-size: 13px;
+        letter-spacing: 0.01em;
+      }
+      .wyg-item { color: var(--navy); font-weight: 500; }
+      .wyg-dot { color: var(--brass); font-weight: 700; }
+
+      .container { max-width: 920px; margin: 0 auto; padding: 40px 24px 80px; }
 
       .page-intro { margin-bottom: 28px; }
       .page-intro h1 {
         margin: 0 0 8px;
         font-family: "Cormorant Garamond", Georgia, serif;
         font-weight: 500;
-        font-size: 36px;
+        font-size: 44px;
         letter-spacing: -0.005em;
         color: var(--navy);
-        line-height: 1.15;
+        line-height: 1.1;
       }
       .page-intro p { margin: 0; color: var(--muted); font-size: 15px; max-width: 640px; }
 
@@ -108,8 +158,8 @@
         background: var(--surface);
         border: 1px solid var(--line);
         border-radius: var(--radius-card);
-        padding: 24px;
-        box-shadow: var(--shadow-sm);
+        padding: 24px 24px 24px 28px;
+        box-shadow: inset 2px 0 0 var(--brass), var(--shadow-sm);
       }
       .card + .card { margin-top: 16px; }
       .card-header {
@@ -473,16 +523,27 @@
         <span class="wordmark-primary">Compass Line Marine</span>
       </div>
     </header>
-    <div class="horizon" aria-hidden="true">
-      <svg viewBox="0 0 1200 40" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0,22 C150,10 300,34 450,22 S750,10 900,22 S1200,34 1200,22" fill="none" stroke="#C8A951" stroke-opacity="0.30" stroke-width="1" stroke-linecap="round" />
+    <section class="hero">
+      <div class="hero-text">Built for serious yacht brokers</div>
+      <svg class="hero-wave" viewBox="0 0 1200 40" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M0,22 C150,10 300,34 450,22 S750,10 900,22 S1200,34 1200,22" fill="none" stroke="#C8A951" stroke-opacity="0.60" stroke-width="1.2" stroke-linecap="round" />
       </svg>
-    </div>
+    </section>
 
     <main class="container">
       <div class="page-intro">
         <h1>Listing generator</h1>
         <p>Paste broker notes, drop in the photos, and get a complete listing package — long description, social copy, email, and a recommended photo order — ready in under a minute.</p>
+      </div>
+
+      <div class="what-you-get" aria-label="What you get">
+        <span class="wyg-item">Long description</span>
+        <span class="wyg-dot" aria-hidden="true">·</span>
+        <span class="wyg-item">Social copy</span>
+        <span class="wyg-dot" aria-hidden="true">·</span>
+        <span class="wyg-item">Email blast</span>
+        <span class="wyg-dot" aria-hidden="true">·</span>
+        <span class="wyg-item">Photo order</span>
       </div>
 
       <form id="form" novalidate>
