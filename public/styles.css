@@ -711,3 +711,176 @@ details.debug pre {
   color: var(--teal);
   font-weight: 500;
 }
+
+.flier-section { margin-bottom: 20px; }
+.flier-section-title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-size: 22px;
+  color: var(--navy);
+  letter-spacing: -0.005em;
+  margin: 0 0 12px;
+}
+.flier-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 22px;
+  box-shadow: inset 2px 0 0 var(--brass), var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.flier-preview-frame {
+  width: 360px;
+  height: 360px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: #FFFFFF;
+  position: relative;
+}
+.flier-placeholder {
+  width: 360px;
+  height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 14px;
+  background: var(--bg);
+  border: 1px dashed var(--line-strong);
+  border-radius: 6px;
+}
+.flier-error {
+  color: var(--danger);
+  font-size: 13px;
+  text-align: center;
+}
+
+.flier-stage {
+  position: fixed;
+  top: -100000px;
+  left: -100000px;
+  width: 1080px;
+  height: 1080px;
+  z-index: -1;
+  pointer-events: none;
+}
+.flier-stage.flier-stage-preview {
+  position: static;
+  width: 360px;
+  height: 360px;
+  pointer-events: auto;
+  z-index: auto;
+}
+.flier-stage.flier-stage-preview .flier-canvas {
+  transform: scale(0.33333333);
+  transform-origin: top left;
+}
+
+.flier-canvas {
+  width: 1080px;
+  height: 1080px;
+  position: relative;
+  background: #FFFFFF;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #0B2545;
+  overflow: hidden;
+}
+.flier-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: #0B2545;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 48px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.flier-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 90px;
+  background: #0B2545;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  padding: 0 30px;
+  font-size: 18px;
+  line-height: 1.2;
+}
+.flier-bottom-left { flex: 0 0 30%; font-weight: 700; }
+.flier-bottom-center { flex: 0 0 40%; text-align: center; }
+.flier-bottom-right { flex: 0 0 30%; text-align: right; }
+
+.flier-content {
+  position: absolute;
+  top: 120px;
+  left: 0;
+  right: 0;
+  bottom: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 50px;
+}
+.flier-photo-wrap {
+  width: 980px;
+  height: 540px;
+  border: 1px solid #0B2545;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: #F2F2F2;
+}
+.flier-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.flier-boat-name {
+  margin-top: 60px;
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #0B2545;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1;
+  padding: 0 40px;
+}
+.flier-boat-name:empty { display: none; }
+.flier-boat-name:empty + .flier-price { margin-top: 60px; }
+.flier-price {
+  margin-top: 30px;
+  font-size: 64px;
+  font-weight: 700;
+  color: #C8A951;
+  text-align: center;
+  line-height: 1;
+}
+.flier-specs {
+  margin-top: 30px;
+  font-size: 22px;
+  font-weight: 400;
+  color: #5F5F5F;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-align: center;
+  line-height: 1.3;
+  padding: 0 40px;
+}
+.flier-specs:empty { display: none; }

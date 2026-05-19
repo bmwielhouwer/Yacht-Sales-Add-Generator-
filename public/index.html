@@ -429,6 +429,8 @@
         document.head.appendChild(s);
       });
 
+      const htmlToImageReady = import("https://esm.sh/html-to-image@1.11.13");
+
       const BROKER_KEY = "clm.broker.v1";
       const brokerFields = {
         name: $("broker-name"),
@@ -639,6 +641,179 @@
         `;
       }
 
+      function formatFlierPrice(usd) {
+        if (usd == null || usd === "" || Number.isNaN(Number(usd))) return null;
+        return "$" + Number(usd).toLocaleString("en-US");
+      }
+
+      function buildFlierSpecs(boatData) {
+        const items = [];
+        if (boatData.length_loa_ft != null) {
+          items.push(`${boatData.length_loa_ft}' LOA`);
+        }
+        const eng = boatData.engines ?? {};
+        if (eng.make_model) {
+          const prefix = eng.count === 2 ? "TWIN " : "";
+          items.push((prefix + eng.make_model).toUpperCase());
+        }
+        if (eng.total_hours != null) {
+          items.push(`${eng.total_hours} HOURS`);
+        } else if (boatData.water_history) {
+          items.push(String(boatData.water_history).replace(/_/g, " ").toUpperCase());
+        } else if (boatData.hull_material) {
+          items.push(String(boatData.hull_material).replace(/_/g, " ").toUpperCase());
+        }
+        return items.join(" · ");
+      }
+
+      function buildFlierBoatName(boatData) {
+        if (!boatData.make && !boatData.model) return "";
+        const bits = [boatData.year, boatData.make, boatData.model].filter(Boolean);
+        return bits.join(" ").toUpperCase();
+      }
+
+      function findHeroPhotoDataUrl(photoSummary) {
+        const hero = (photoSummary?.photos ?? []).find((p) => p.hero_candidate);
+        if (!hero) return null;
+        const photo = photos[hero.index - 1];
+        return photo?.dataUrl ?? null;
+      }
+
+      function populateFlierBroker(broker) {
+        const bottom = document.querySelector("#flier-stage .flier-bottom");
+        if (!bottom) return;
+        bottom.innerHTML = "";
+        const items = [];
+        if (broker?.name) items.push({ value: broker.name, bold: true });
+        if (broker?.phone) items.push({ value: broker.phone });
+        if (broker?.email) items.push({ value: broker.email });
+        if (items.length === 0) return;
+        items.forEach((item, i) => {
+          const cell = document.createElement("div");
+          if (items.length === 3) {
+            cell.style.flex = i === 1 ? "0 0 40%" : "0 0 30%";
+          } else {
+            cell.style.flex = "1";
+          }
+          cell.style.textAlign = items.length === 1
+            ? "center"
+            : i === 0
+              ? "left"
+              : i === items.length - 1
+                ? "right"
+                : "center";
+          if (item.bold) cell.style.fontWeight = "700";
+          cell.textContent = item.value;
+          bottom.appendChild(cell);
+        });
+      }
+
+      function populateFlier(boatData, photoSummary) {
+        const heroUrl = findHeroPhotoDataUrl(photoSummary);
+        if (!heroUrl) return false;
+
+        document.getElementById("flier-photo").src = heroUrl;
+        document.getElementById("flier-boat-name").textContent = buildFlierBoatName(boatData);
+
+        const price = formatFlierPrice(boatData.asking_price_usd);
+        document.getElementById("flier-price").textContent = price ?? "Price on Request";
+
+        document.getElementById("flier-specs").textContent = buildFlierSpecs(boatData);
+        populateFlierBroker(boatData.broker);
+        return true;
+      }
+
+      function flierFileName(boatData) {
+        const bits = [boatData.year, boatData.make, boatData.model].filter(Boolean);
+        if (bits.length === 0) return "boat_flier.png";
+        const slug = bits.join("_").toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_|_$/g, "");
+        return `${slug || "boat"}_flier.png`;
+      }
+
+      async function renderFlierBlob() {
+        const node = document.querySelector("#flier-stage .flier-canvas");
+        if (!node) throw new Error("Flier not available");
+        const htmlToImage = await htmlToImageReady;
+        return htmlToImage.toBlob(node, {
+          width: 1080,
+          height: 1080,
+          pixelRatio: 1,
+          backgroundColor: "#FFFFFF",
+          style: {
+            transform: "none",
+            transformOrigin: "top left",
+          },
+        });
+      }
+
+      async function downloadFlier(e) {
+        const btn = e.currentTarget;
+        const orig = btn.innerHTML;
+        const errEl = document.getElementById("flier-error");
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner"></span> Rendering…`;
+        if (errEl) errEl.textContent = "";
+        try {
+          const blob = await renderFlierBlob();
+          if (!blob) throw new Error("Render produced no image");
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = flierFileName(lastResult.boatData);
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          if (errEl) {
+            errEl.innerHTML = `Couldn't render the flier — ${escape(err.message)}. <button type="button" class="btn btn-ghost" id="flier-retry">Retry</button>`;
+            const retry = document.getElementById("flier-retry");
+            if (retry) retry.addEventListener("click", () => downloadFlier({ currentTarget: btn }));
+          }
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = orig;
+        }
+      }
+
+      function buildFlierSection(boatData, photoSummary) {
+        const heroUrl = findHeroPhotoDataUrl(photoSummary);
+        if (!heroUrl) {
+          return `
+            <section class="flier-section">
+              <h2 class="flier-section-title">Social Media Flier</h2>
+              <div class="flier-placeholder">Upload photos to generate a social media flier</div>
+            </section>
+          `;
+        }
+        return `
+          <section class="flier-section">
+            <h2 class="flier-section-title">Social Media Flier</h2>
+            <div class="flier-card">
+              <div class="flier-preview-frame">
+                <div class="flier-stage flier-stage-preview" id="flier-stage">
+                  <div class="flier-canvas">
+                    <div class="flier-banner">JUST LISTED</div>
+                    <div class="flier-content">
+                      <div class="flier-photo-wrap"><img class="flier-photo" id="flier-photo" alt="" /></div>
+                      <div class="flier-boat-name" id="flier-boat-name"></div>
+                      <div class="flier-price" id="flier-price"></div>
+                      <div class="flier-specs" id="flier-specs"></div>
+                    </div>
+                    <div class="flier-bottom"></div>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary" id="download-flier">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Download Flier</span>
+              </button>
+              <div class="flier-error" id="flier-error"></div>
+            </div>
+          </section>
+        `;
+      }
+
       function renderResults(data) {
         const { listing, boatData, photoSummary } = data;
         lastResult = data;
@@ -658,6 +833,8 @@
         if (gap) {
           parts.push(`<div class="gap-banner"><strong>Photo gap analysis.</strong> ${escape(gap)}</div>`);
         }
+
+        parts.push(buildFlierSection(boatData, photoSummary));
 
         const gallery = buildPhotoGallery(listing, photoSummary);
         if (gallery) parts.push(gallery);
@@ -707,6 +884,12 @@
           });
         });
         $("download-zip").addEventListener("click", downloadZip);
+
+        if (document.getElementById("flier-stage")) {
+          populateFlier(boatData, photoSummary);
+          const dlFlier = document.getElementById("download-flier");
+          if (dlFlier) dlFlier.addEventListener("click", downloadFlier);
+        }
       }
 
       function listingBaseName(boatData) {
@@ -748,6 +931,15 @@
           }
           root.file("boat-data.json", JSON.stringify(boatData, null, 2));
           root.file("photo-analysis.json", JSON.stringify(photoSummary, null, 2));
+
+          if (document.getElementById("flier-stage")) {
+            try {
+              const flierBlob = await renderFlierBlob();
+              if (flierBlob) root.file("social_media_flier.png", flierBlob);
+            } catch (err) {
+              console.error("flier render failed for zip", err);
+            }
+          }
 
           const order = Array.isArray(listing.photo_order) ? listing.photo_order : [];
           const photoFolder = root.folder("photos");
