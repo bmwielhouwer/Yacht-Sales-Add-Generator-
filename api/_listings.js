@@ -69,7 +69,11 @@ export function listingUrl(origin, slug) {
 
 export async function saveListing(slug, record) {
   const redis = getRedis();
-  if (!redis) throw new Error("Upstash Redis is not configured");
+  if (!redis) {
+    throw new Error(
+      "Redis client unavailable — set UPSTASH_REDIS_REST_URL/TOKEN (or KV_REST_API_URL/TOKEN) for this environment in Vercel and redeploy",
+    );
+  }
   const key = `listing:${slug}`;
   const bytes = JSON.stringify(record).length;
   console.log("[listings.saveListing] writing", { key, slug, bytes });
@@ -118,7 +122,11 @@ export async function getViewCount(slug) {
 
 export async function saveLead(slug, lead) {
   const redis = getRedis();
-  if (!redis) throw new Error("Upstash Redis is not configured");
+  if (!redis) {
+    throw new Error(
+      "Redis client unavailable — set UPSTASH_REDIS_REST_URL/TOKEN (or KV_REST_API_URL/TOKEN) for this environment in Vercel and redeploy",
+    );
+  }
   const ts = new Date().toISOString();
   const key = `lead:${slug}:${ts}-${randomSuffix(6)}`;
   await redis.set(key, { ...lead, slug, created_at: ts });
