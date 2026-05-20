@@ -26,7 +26,7 @@
         <span class="wordmark-divider" aria-hidden="true"></span>
         <span class="wordmark-primary"><a href="/">Compass Line Marine</a></span>
         <span class="header-spacer"></span>
-        <a href="/dashboard" class="header-cta" id="dashboard-link" hidden>Dashboard</a>
+        <a href="/dashboard" class="header-cta" id="dashboard-link" hidden>Dashboard<svg class="header-cta-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></a>
         <span class="header-account" id="header-account" hidden>
           <span class="email" id="header-email"></span>
           <button type="button" class="header-logout" id="sign-out">Sign out</button>
@@ -238,7 +238,7 @@
       function showCodeOnlyChrome() {
         headerAccount.hidden = false;
         headerEmail.textContent = "";
-        dashboardLink.hidden = true;
+        dashboardLink.hidden = false;
       }
       async function signOut() {
         try {
