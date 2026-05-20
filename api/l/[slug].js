@@ -132,7 +132,7 @@ function renderPage(record, slug) {
   const photoSlides = photoUrls
     .map(
       (u, i) =>
-        `<div class="slide"><img src="${escAttr(u)}" alt="${escAttr(title)} photo ${i + 1}" loading="${i === 0 ? "eager" : "lazy"}" /></div>`,
+        `<div class="slide" style="background-image: url('${escAttr(u)}')"><img src="${escAttr(u)}" alt="${escAttr(title)} photo ${i + 1}" loading="${i === 0 ? "eager" : "lazy"}" /></div>`,
     )
     .join("");
 

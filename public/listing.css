@@ -98,14 +98,39 @@ a:hover { text-decoration: underline; }
 }
 .lp-track::-webkit-scrollbar { display: none; }
 .slide {
+  position: relative;
   flex: 0 0 100%;
   scroll-snap-align: start;
   display: flex; align-items: center; justify-content: center;
-  background: var(--navy);
-  height: clamp(260px, 56vw, 520px);
+  background-color: var(--navy);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+  height: min(70vh, 600px);
+  min-height: 320px;
+}
+.slide::before {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  background-image: inherit;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(28px) saturate(1.1);
+  opacity: 0.55;
+  transform: scale(1.12);
+  z-index: 0;
+  pointer-events: none;
 }
 .slide img {
-  width: 100%; height: 100%; object-fit: cover; display: block;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 .slide-empty { color: rgba(255,255,255,0.7); font-size: 14px; }
 
