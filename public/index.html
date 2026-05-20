@@ -391,20 +391,24 @@
 
         const dataPromise = callApi("/api/extract-boat-data", {
           rawInput, category, askingPrice, broker,
-        }).then((r) => { markDone(loaderRows.notes); return r.boatData; });
+        }).then((r) => { markDone(loaderRows.notes); return r; });
 
         const photoPromise = hasPhotos
           ? callApi("/api/analyze-photos", { photos: photoDataUrls })
-              .then((r) => { markDone(loaderRows.photos); return r.photoSummary; })
-          : Promise.resolve(EMPTY_PHOTO_SUMMARY);
+              .then((r) => { markDone(loaderRows.photos); return r; })
+          : Promise.resolve({ photoSummary: EMPTY_PHOTO_SUMMARY, photoUrls: [] });
 
-        const [boatData, photoSummary] = await Promise.all([dataPromise, photoPromise]);
+        const [dataResp, photoResp] = await Promise.all([dataPromise, photoPromise]);
+        const { boatData, slug, listingUrl } = dataResp;
+        const { photoSummary, photoUrls } = photoResp;
 
         markActive(loaderRows.write);
-        const { listing } = await callApi("/api/generate-listing", { boatData, photoSummary });
+        const { listing } = await callApi("/api/generate-listing", {
+          boatData, photoSummary, listingUrl,
+        });
         markDone(loaderRows.write);
 
-        return { boatData, photoSummary, listing };
+        return { boatData, photoSummary, listing, slug, listingUrl, photoUrls };
       }
 
       function escape(s) {
@@ -822,6 +826,23 @@
         }
       }
 
+      async function renderFlierQr() {
+        const stage = document.getElementById("flier-stage");
+        if (!stage) return;
+        const qrWrap = stage.querySelector(".flier-qr");
+        if (!qrWrap) return;
+        const url = lastResult?.listingUrl;
+        if (!url) { qrWrap.hidden = true; return; }
+        const dataUrl = await getQrDataUrl(url);
+        if (!dataUrl) { qrWrap.hidden = true; return; }
+        const img = qrWrap.querySelector("img");
+        if (img) {
+          img.src = dataUrl;
+          if (img.decode) { try { await img.decode(); } catch {} }
+        }
+        qrWrap.hidden = false;
+      }
+
       function renderFlierFromState() {
         if (!flierState) return;
         const stage = document.getElementById("flier-stage");
@@ -836,6 +857,7 @@
           : "Price on Request";
         stage.querySelector(".flier-specs").textContent = flierState.specs;
         populateFlierBottom();
+        renderFlierQr();
       }
 
       function buildCustomizePanel(defaults) {
@@ -985,6 +1007,7 @@
             flierState.heroPhotoIdxs = idxs;
             updatePhotoSelectorUi();
             renderFlierFromState();
+            markSaveDirty();
           });
         }
 
@@ -994,12 +1017,14 @@
           el.addEventListener("input", (e) => {
             flierState[key] = e.target.value;
             renderFlierFromState();
+            markSaveDirty();
           });
         };
         const banner = document.getElementById("flier-banner-select");
         if (banner) banner.addEventListener("change", (e) => {
           flierState.banner = e.target.value;
           renderFlierFromState();
+          markSaveDirty();
         });
         bindInput("flier-edit-name", "boatName");
         bindInput("flier-edit-price", "priceText");
@@ -1013,6 +1038,7 @@
           flierState.tagline = e.target.value;
           saveBranding();
           renderFlierFromState();
+          markSaveDirty();
         });
 
         const logoInput = document.getElementById("flier-logo-input");
@@ -1030,6 +1056,7 @@
             saveBranding();
             updateLogoPreviewUi();
             renderFlierFromState();
+            markSaveDirty();
           };
           reader.onerror = () => alert("Couldn't read that logo file.");
           reader.readAsDataURL(file);
@@ -1042,6 +1069,7 @@
           saveBranding();
           updateLogoPreviewUi();
           renderFlierFromState();
+          markSaveDirty();
         });
 
         const reset = document.getElementById("flier-reset");
@@ -1069,6 +1097,7 @@
       async function renderFlierBlob() {
         const node = document.querySelector("#flier-stage .flier-canvas");
         if (!node) throw new Error("Flier not available");
+        await renderFlierQr();
         const htmlToImage = await htmlToImageReady;
         return htmlToImage.toBlob(node, {
           width: 1080,
@@ -1136,6 +1165,10 @@
                       <div class="flier-specs"></div>
                     </div>
                     <div class="flier-bottom"></div>
+                    <div class="flier-qr" hidden>
+                      <img alt="" />
+                      <div class="flier-qr-label">Scan for details</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1155,6 +1188,121 @@
         el.style.height = el.scrollHeight + "px";
       }
 
+      const qrcodeReady = import("https://esm.sh/qrcode@1.5.4").then((m) => m.default ?? m);
+      let qrCache = { url: null, dataUrl: null };
+      async function getQrDataUrl(url) {
+        if (!url) return null;
+        if (qrCache.url === url && qrCache.dataUrl) return qrCache.dataUrl;
+        try {
+          const QRCode = await qrcodeReady;
+          const dataUrl = await QRCode.toDataURL(url, {
+            width: 320,
+            margin: 1,
+            color: { dark: "#0B2545", light: "#FFFFFF" },
+          });
+          qrCache = { url, dataUrl };
+          return dataUrl;
+        } catch (err) {
+          console.warn("qr render failed", err);
+          return null;
+        }
+      }
+
+      function readCurrentListingValues() {
+        if (!lastResult?.listing) return null;
+        const edited = { ...lastResult.listing };
+        for (const { key } of SECTIONS) {
+          const ta = document.querySelector(`textarea[data-output-key="${key}"]`);
+          if (!ta) continue;
+          if (key === "email_subject") {
+            edited.email_blast = { ...(edited.email_blast ?? {}), subject: ta.value };
+          } else if (key === "email_body") {
+            edited.email_blast = { ...(edited.email_blast ?? {}), body: ta.value };
+          } else if (key === "instagram_hashtags") {
+            edited.instagram_hashtags = ta.value.split(/\s+/).filter(Boolean);
+          } else {
+            edited[key] = ta.value;
+          }
+        }
+        return edited;
+      }
+
+      function buildSavePayload() {
+        if (!lastResult?.slug) return null;
+        const { slug, boatData, photoSummary, photoUrls, listingUrl } = lastResult;
+        const edited = readCurrentListingValues();
+        const flier = flierState ? { ...flierState } : null;
+        if (flier) {
+          if (flier.heroPhotoIdxs) flier.heroPhotoIdxs = [...flier.heroPhotoIdxs];
+          flier.logoDataUrl = null;
+        }
+        const broker = {
+          name: flier?.brokerName ?? boatData.broker?.name ?? null,
+          phone: flier?.brokerPhone ?? boatData.broker?.phone ?? null,
+          email: flier?.brokerEmail ?? boatData.broker?.email ?? null,
+          company: boatData.broker?.company ?? null,
+          tagline: flier?.tagline ?? null,
+        };
+        const photoOrder = Array.isArray(edited?.photo_order) ? edited.photo_order : [];
+        return {
+          slug,
+          listing: edited,
+          flier,
+          boatData,
+          photoUrls: photoUrls ?? [],
+          photoSummary,
+          photoOrder,
+          broker,
+          listingUrl,
+        };
+      }
+
+      let saveTimer = null;
+      let savingNow = false;
+      function markSaveDirty() {
+        if (!lastResult?.slug) return;
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(syncListing, 1100);
+        const ind = document.getElementById("save-status");
+        if (ind) ind.textContent = "Saving…";
+      }
+      async function syncListing() {
+        if (savingNow) return;
+        const payload = buildSavePayload();
+        if (!payload) return;
+        savingNow = true;
+        const ind = document.getElementById("save-status");
+        try {
+          await callApi("/api/save-listing", payload);
+          if (ind) ind.textContent = "All changes saved";
+        } catch (err) {
+          if (ind) ind.textContent = "Save failed — will retry";
+          console.warn("syncListing failed", err);
+        } finally {
+          savingNow = false;
+        }
+      }
+
+      function buildPublicUrlCard(url) {
+        if (!url) return "";
+        const safe = escape(url);
+        return `
+          <div class="public-url-card" id="public-url-card">
+            <div class="public-url-meta">
+              <div class="public-url-label">Your listing is live at</div>
+              <div class="public-url-row">
+                <a href="${safe}" target="_blank" rel="noopener" class="public-url-link">${safe}</a>
+              </div>
+            </div>
+            <div class="public-url-actions">
+              <button type="button" class="btn btn-outline" id="copy-public-url">Copy link</button>
+              <a href="${safe}" target="_blank" rel="noopener" class="btn btn-outline">Open ↗</a>
+            </div>
+            <div class="public-url-status" id="save-status">All changes saved</div>
+          </div>
+        `;
+      }
+
       function renderResults(data) {
         const { listing, boatData, photoSummary } = data;
         lastResult = data;
@@ -1169,6 +1317,10 @@
             </button>
           </div>
         `);
+
+        if (data.listingUrl) {
+          parts.push(buildPublicUrlCard(data.listingUrl));
+        }
 
         const gap = buildGapText(photoSummary);
         if (gap) {
@@ -1222,7 +1374,10 @@
           if (!ta) continue;
           ta.value = text;
           autoGrowOutput(ta);
-          ta.addEventListener("input", () => autoGrowOutput(ta));
+          ta.addEventListener("input", () => {
+            autoGrowOutput(ta);
+            markSaveDirty();
+          });
         }
 
         results.querySelectorAll(".copy-btn").forEach((btn) => {
@@ -1242,12 +1397,30 @@
         });
         $("download-zip").addEventListener("click", downloadZip);
 
+        const copyUrlBtn = document.getElementById("copy-public-url");
+        if (copyUrlBtn && data.listingUrl) {
+          copyUrlBtn.addEventListener("click", async () => {
+            try {
+              await navigator.clipboard.writeText(data.listingUrl);
+              const orig = copyUrlBtn.textContent;
+              copyUrlBtn.textContent = "Copied";
+              setTimeout(() => (copyUrlBtn.textContent = orig), 1200);
+            } catch {
+              copyUrlBtn.textContent = "Copy failed";
+            }
+          });
+        }
+
         if (document.getElementById("flier-stage") && flierState) {
           applyStateToInputs();
           renderFlierFromState();
           wireCustomizeHandlers();
           const dlFlier = document.getElementById("download-flier");
           if (dlFlier) dlFlier.addEventListener("click", downloadFlier);
+        }
+
+        if (data.slug) {
+          syncListing().catch(() => {});
         }
       }
 

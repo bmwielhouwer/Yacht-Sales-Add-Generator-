@@ -6,10 +6,11 @@ const SYSTEM = loadPrompt("narrative-system");
 const USER_MESSAGE =
   "Generate the Listing Package for this boat using the system instructions above. The boat data and photo summary are already included in the system context.";
 
-export async function generateListing({ boatData, photoSummary }) {
+export async function generateListing({ boatData, photoSummary, listingUrl }) {
   const system = fillTemplate(SYSTEM, {
     BOAT_DATA_JSON: JSON.stringify(boatData, null, 2),
     PHOTO_SUMMARY_JSON: JSON.stringify(photoSummary, null, 2),
+    LISTING_URL: listingUrl && typeof listingUrl === "string" ? listingUrl : "NONE",
   });
 
   const response = await client.messages.create({

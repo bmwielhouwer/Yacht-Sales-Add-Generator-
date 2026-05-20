@@ -4,8 +4,14 @@
   "functions": {
     "api/verify-code.js": { "maxDuration": 10 },
     "api/extract-boat-data.js": { "maxDuration": 30 },
-    "api/analyze-photos.js": { "maxDuration": 45 },
+    "api/analyze-photos.js": { "maxDuration": 60 },
     "api/generate-listing.js": { "maxDuration": 45 },
+    "api/save-listing.js": { "maxDuration": 10 },
+    "api/inquiry.js": { "maxDuration": 15 },
+    "api/l/[slug].js": { "maxDuration": 10 },
     "api/stripe/webhook.js": { "maxDuration": 15 }
-  }
+  },
+  "rewrites": [
+    { "source": "/l/:slug", "destination": "/api/l/:slug" }
+  ]
 }
