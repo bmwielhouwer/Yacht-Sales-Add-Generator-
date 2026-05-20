@@ -17,6 +17,23 @@ function truncate(s, n) {
 }
 
 export default async function handler(req, res) {
+  try {
+    return await handleInquiry(req, res);
+  } catch (err) {
+    console.error("[inquiry] crash", {
+      message: err?.message,
+      name: err?.name,
+      stack: err?.stack,
+    });
+    if (!res.headersSent) {
+      return res
+        .status(500)
+        .json({ error: err?.message ? `inquiry: ${err.message}` : "Internal error" });
+    }
+  }
+}
+
+async function handleInquiry(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "POST only" });
