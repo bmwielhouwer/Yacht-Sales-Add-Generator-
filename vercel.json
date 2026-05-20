@@ -10,11 +10,7 @@
     "api/inquiry.js": { "maxDuration": 15 },
     "api/l/[slug].js": { "maxDuration": 10 },
     "api/stripe/webhook.js": { "maxDuration": 15 },
-    "api/dashboard/login.js": { "maxDuration": 10 },
-    "api/dashboard/logout.js": { "maxDuration": 5 },
-    "api/dashboard/me.js": { "maxDuration": 5 },
-    "api/dashboard/listings.js": { "maxDuration": 15 },
-    "api/dashboard/leads.js": { "maxDuration": 15 }
+    "api/dashboard/[action].js": { "maxDuration": 15 }
   },
   "rewrites": [
     { "source": "/l/:slug", "destination": "/api/l/:slug" }
