@@ -1582,7 +1582,15 @@
           renderResults(data);
         } catch (err) {
           hideLoader();
-          setStatus("Error — " + err.message, { kind: "error" });
+          const msg = String(err?.message ?? err);
+          const looksLikeTimeout =
+            /504|FUNCTION_INVOCATION_TIMEOUT|timed? ?out|Gateway Time-?out|NetworkError|Failed to fetch/i.test(
+              msg
+            );
+          const friendly = looksLikeTimeout
+            ? "Generation took longer than expected. Try again with fewer photos, or contact support if this keeps happening."
+            : "Error — " + msg;
+          setStatus(friendly, { kind: "error" });
         } finally {
           submit.disabled = false;
         }

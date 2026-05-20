@@ -1,7 +1,7 @@
 import { generateListing } from "../src/generateListing.js";
 import { withGuard } from "./_lib.js";
 
-export const config = { maxDuration: 45 };
+export const config = { maxDuration: 60 };
 
 export default withGuard(async (req, res) => {
   const { boatData, photoSummary, listingUrl } = req.body ?? {};

@@ -5,7 +5,7 @@
     "api/verify-code.js": { "maxDuration": 10 },
     "api/extract-boat-data.js": { "maxDuration": 30 },
     "api/analyze-photos.js": { "maxDuration": 60 },
-    "api/generate-listing.js": { "maxDuration": 45 },
+    "api/generate-listing.js": { "maxDuration": 60 },
     "api/save-listing.js": { "maxDuration": 10 },
     "api/inquiry.js": { "maxDuration": 15 },
     "api/l/[slug].js": { "maxDuration": 10 },
