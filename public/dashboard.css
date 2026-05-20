@@ -148,6 +148,7 @@ a:hover { text-decoration: underline; }
 .db-empty p { margin: 6px 0 14px; font-size: 14px; }
 
 .db-listing-row {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
@@ -157,7 +158,33 @@ a:hover { text-decoration: underline; }
   background: var(--surface);
   margin-bottom: 12px;
   box-shadow: var(--shadow-sm);
+  transition: opacity 220ms ease, transform 220ms ease;
 }
+.db-listing-row.db-listing-row-removing {
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+.db-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--danger);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.db-delete-btn:hover {
+  background: #fdecec;
+  opacity: 1;
+}
+.db-listing-main { min-width: 0; padding-right: 56px; }
 .db-listing-name {
   font-family: "Cormorant Garamond", Georgia, serif;
   font-weight: 500;
@@ -214,6 +241,91 @@ a:hover { text-decoration: underline; }
   .db-listing-row { grid-template-columns: 1fr; }
   .db-listing-actions { flex-direction: row; align-items: stretch; flex-wrap: wrap; }
   .db-listing-actions .db-btn { flex: 1; text-align: center; }
+  .db-listing-main { padding-right: 64px; }
+}
+
+.db-btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.db-btn-danger:hover {
+  background: #8c1e18;
+  border-color: #8c1e18;
+}
+
+.db-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.db-modal[hidden] { display: none; }
+.db-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 37, 69, 0.45);
+}
+.db-modal-card {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: 0 12px 40px rgba(11, 37, 69, 0.25);
+  padding: 24px 24px 20px;
+  max-width: 420px;
+  width: 100%;
+}
+.db-modal-card h2 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-size: 22px;
+  color: var(--navy);
+  margin: 0 0 8px;
+}
+.db-modal-body {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+.db-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.db-modal-error {
+  color: var(--danger);
+  font-size: 13px;
+  background: #fdecec;
+  border: 1px solid #f5c2c2;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.db-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: var(--navy);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  box-shadow: 0 6px 20px rgba(11, 37, 69, 0.25);
+  opacity: 0;
+  transition: opacity 200ms ease, transform 200ms ease;
+  z-index: 110;
+  pointer-events: none;
+}
+.db-toast[hidden] { display: none; }
+.db-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .db-controls {

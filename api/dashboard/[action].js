@@ -1,3 +1,4 @@
+import { del } from "@vercel/blob";
 import { getRedis, lookupCode } from "../_codes.js";
 import { isValidAccessCode } from "../_lib.js";
 import { loadListing, listingUrl, getPublicOrigin } from "../_listings.js";
@@ -267,12 +268,118 @@ async function leadsHandler(req, res) {
   return res.status(405).json({ error: "GET, POST, or PATCH only" });
 }
 
+async function deleteListingHandler(req, res) {
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "POST only" });
+  }
+  const session = await requireSession(req, res);
+  if (!session) return;
+
+  const redis = getRedis();
+  if (!redis) {
+    return res.status(500).json({ error: "Redis client unavailable on this deployment." });
+  }
+
+  const slug = String(req.body?.slug ?? "").trim();
+  if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+    return res.status(400).json({ error: "Valid slug required." });
+  }
+
+  const record = await loadListing(slug);
+  if (!record) {
+    return res.status(404).json({ error: "Listing not found." });
+  }
+
+  const brokerEmail = normalizeEmail(
+    record?.broker?.email || record?.boatData?.broker?.email || "",
+  );
+  if (!brokerEmail || brokerEmail !== session.email) {
+    console.warn("[dashboard.delete-listing] auth mismatch", {
+      sessionEmail: session.email,
+      brokerEmail,
+      slug,
+    });
+    return res.status(403).json({ error: "Not your listing." });
+  }
+
+  const allLeadKeys = await getBrokerLeadKeys(session.email);
+  const leadKeys = allLeadKeys.filter((k) => k.startsWith(`lead:${slug}:`));
+  const photoUrls = Array.isArray(record.photoUrls) ? record.photoUrls.filter(Boolean) : [];
+
+  let deletedLeadCount = 0;
+  for (const key of leadKeys) {
+    try {
+      await redis.del(key);
+      deletedLeadCount++;
+    } catch (err) {
+      console.error("[dashboard.delete-listing] lead del failed", { key, err: err?.message });
+    }
+  }
+  if (leadKeys.length) {
+    try {
+      await redis.zrem(`leads:by-broker:${session.email}`, ...leadKeys);
+    } catch (err) {
+      console.error("[dashboard.delete-listing] zrem leads index failed", {
+        email: session.email,
+        err: err?.message,
+      });
+    }
+  }
+
+  let deletedPhotoCount = 0;
+  for (const url of photoUrls) {
+    try {
+      await del(url);
+      deletedPhotoCount++;
+    } catch (err) {
+      console.warn("[dashboard.delete-listing] blob del failed, continuing", {
+        url,
+        err: err?.message,
+      });
+    }
+  }
+
+  try {
+    await redis.del(`listing:${slug}`);
+  } catch (err) {
+    console.error("[dashboard.delete-listing] listing del failed", { slug, err: err?.message });
+    return res.status(500).json({ error: "Failed to delete listing record." });
+  }
+  try {
+    await redis.del(`listing:${slug}:views`);
+  } catch (err) {
+    console.warn("[dashboard.delete-listing] view counter del failed", {
+      slug,
+      err: err?.message,
+    });
+  }
+  try {
+    await redis.zrem(`listings:by-broker:${session.email}`, slug);
+  } catch (err) {
+    console.error("[dashboard.delete-listing] zrem listings index failed", {
+      email: session.email,
+      slug,
+      err: err?.message,
+    });
+  }
+
+  console.log("[dashboard.delete-listing] complete", {
+    slug,
+    email: session.email,
+    deletedLeadCount,
+    deletedPhotoCount,
+  });
+  return res.status(200).json({ success: true, deletedLeadCount, deletedPhotoCount });
+}
+
 const ACTIONS = {
   login: loginHandler,
   logout: logoutHandler,
   me: meHandler,
   listings: listingsHandler,
   leads: leadsHandler,
+  "delete-listing": deleteListingHandler,
 };
 
 export default async function handler(req, res) {

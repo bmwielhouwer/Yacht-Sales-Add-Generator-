@@ -64,6 +64,21 @@
     </div>
   </main>
   <footer class="db-footer">Compass Line Marine · Built for serious yacht brokers</footer>
+
+  <div class="db-modal" id="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" hidden>
+    <div class="db-modal-backdrop" data-close></div>
+    <div class="db-modal-card">
+      <h2 id="delete-modal-title">Delete this listing?</h2>
+      <p class="db-modal-body">This will also delete all leads on it and the photos. This can't be undone.</p>
+      <div class="db-modal-error" id="delete-modal-error" hidden></div>
+      <div class="db-modal-actions">
+        <button type="button" class="db-btn" data-close>Cancel</button>
+        <button type="button" class="db-btn db-btn-danger" id="delete-confirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="db-toast" id="db-toast" hidden></div>
 </template>
 
 <script>
@@ -189,14 +204,101 @@
       );
 
       const row = el("div", { class: "db-listing-row" },
-        el("div", {},
+        el("div", { class: "db-listing-main" },
           el("h2", { class: "db-listing-name" }, item.boatName),
           meta,
         ),
         actions,
       );
+
+      const deleteBtn = el("button", { type: "button", class: "db-delete-btn", "aria-label": "Delete listing" }, "Delete");
+      deleteBtn.addEventListener("click", () => openDeleteModal(item, row));
+      row.appendChild(deleteBtn);
+
       list.appendChild(row);
     }
+    bindDeleteModalHandlers();
+  }
+
+  let pendingDelete = null;
+  function openDeleteModal(item, rowEl) {
+    pendingDelete = { item, rowEl };
+    const modal = document.getElementById("delete-modal");
+    const errEl = document.getElementById("delete-modal-error");
+    const confirm = document.getElementById("delete-confirm");
+    errEl.hidden = true;
+    errEl.textContent = "";
+    confirm.disabled = false;
+    confirm.textContent = "Delete";
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    setTimeout(() => confirm.focus(), 30);
+  }
+  function closeDeleteModal() {
+    const modal = document.getElementById("delete-modal");
+    if (!modal) return;
+    modal.hidden = true;
+    document.body.style.overflow = "";
+    pendingDelete = null;
+  }
+  async function performDelete() {
+    if (!pendingDelete) return;
+    const { item, rowEl } = pendingDelete;
+    const errEl = document.getElementById("delete-modal-error");
+    const confirm = document.getElementById("delete-confirm");
+    errEl.hidden = true;
+    confirm.disabled = true;
+    confirm.textContent = "Deleting…";
+    try {
+      await fetchJSON("/api/dashboard/delete-listing", {
+        method: "POST",
+        body: JSON.stringify({ slug: item.slug }),
+      });
+      closeDeleteModal();
+      rowEl.classList.add("db-listing-row-removing");
+      setTimeout(() => {
+        rowEl.remove();
+        const list = document.getElementById("listings-list");
+        if (list && !list.querySelector(".db-listing-row")) {
+          list.appendChild(
+            el("div", { class: "db-card db-empty" },
+              el("h3", {}, "No listings yet"),
+              el("p", {}, "Generate your first listing in the main app — it'll show up here."),
+              el("a", { class: "db-btn db-btn-primary", href: "/" }, "Open the generator"),
+            ),
+          );
+        }
+      }, 260);
+      showToast("Listing deleted.");
+    } catch (err) {
+      errEl.textContent = err.message || "Couldn't delete the listing.";
+      errEl.hidden = false;
+      confirm.disabled = false;
+      confirm.textContent = "Delete";
+    }
+  }
+  let toastTimer = null;
+  function showToast(text) {
+    const t = document.getElementById("db-toast");
+    if (!t) return;
+    t.textContent = text;
+    t.hidden = false;
+    requestAnimationFrame(() => t.classList.add("show"));
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      t.classList.remove("show");
+      setTimeout(() => { t.hidden = true; }, 220);
+    }, 2400);
+  }
+  function bindDeleteModalHandlers() {
+    const modal = document.getElementById("delete-modal");
+    if (!modal || modal.dataset.bound === "1") return;
+    modal.dataset.bound = "1";
+    modal.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", closeDeleteModal));
+    document.getElementById("delete-confirm").addEventListener("click", performDelete);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !modal.hidden) closeDeleteModal();
+    });
   }
 
   async function loadListings() {
