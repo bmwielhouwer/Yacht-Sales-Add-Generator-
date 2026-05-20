@@ -73,19 +73,28 @@ a:hover { text-decoration: underline; }
 .wordmark-primary a:hover { text-decoration: none; }
 .header-spacer { flex: 1; }
 .header-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--navy);
-  background: var(--bg);
-  border: 1px solid var(--line-strong);
-  padding: 6px 12px;
-  border-radius: 6px;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
   text-decoration: none;
 }
 .header-cta:hover {
-  background: var(--surface);
-  border-color: var(--navy);
+  background: var(--bg);
+  color: var(--brass);
   text-decoration: none;
+}
+.header-cta-arrow {
+  transition: transform 120ms ease;
+}
+.header-cta:hover .header-cta-arrow {
+  transform: translateX(2px);
 }
 .header-account {
   display: flex;
