@@ -17,7 +17,14 @@ export default async function handler(req, res) {
 
   const body = req.body ?? {};
   const slug = String(body.slug ?? "").trim();
+  console.log("[save-listing] incoming", {
+    method: req.method,
+    slug,
+    hasListing: !!body.listing,
+    photoUrlsCount: Array.isArray(body.photoUrls) ? body.photoUrls.length : 0,
+  });
   if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+    console.warn("[save-listing] invalid slug rejected:", JSON.stringify(slug));
     return res.status(400).json({ error: "Valid slug required." });
   }
 

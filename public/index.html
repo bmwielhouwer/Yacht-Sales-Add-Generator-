@@ -408,6 +408,35 @@
         });
         markDone(loaderRows.write);
 
+        console.log("[client] pipeline produced", { slug, listingUrl, photoUrls });
+
+        const initialBroker = {
+          name: boatData.broker?.name ?? null,
+          phone: boatData.broker?.phone ?? null,
+          email: boatData.broker?.email ?? null,
+          company: boatData.broker?.company ?? null,
+          tagline: null,
+        };
+        const initialPayload = {
+          slug,
+          listing,
+          flier: null,
+          boatData,
+          photoUrls,
+          photoSummary,
+          photoOrder: Array.isArray(listing?.photo_order) ? listing.photo_order : [],
+          broker: initialBroker,
+          listingUrl,
+        };
+        try {
+          console.log("[client] initial save-listing posting for", slug);
+          await callApi("/api/save-listing", initialPayload);
+          console.log("[client] initial save-listing succeeded for", slug);
+        } catch (err) {
+          console.error("[client] initial save-listing failed for", slug, err);
+          throw new Error(`Couldn't publish listing — ${err.message}`);
+        }
+
         return { boatData, photoSummary, listing, slug, listingUrl, photoUrls };
       }
 
@@ -1273,11 +1302,12 @@
         savingNow = true;
         const ind = document.getElementById("save-status");
         try {
+          console.log("[client] syncListing posting for slug", payload.slug);
           await callApi("/api/save-listing", payload);
           if (ind) ind.textContent = "All changes saved";
         } catch (err) {
           if (ind) ind.textContent = "Save failed — will retry";
-          console.warn("syncListing failed", err);
+          console.warn("[client] syncListing failed for slug", payload.slug, err);
         } finally {
           savingNow = false;
         }
@@ -1420,7 +1450,7 @@
         }
 
         if (data.slug) {
-          syncListing().catch(() => {});
+          console.log("[client] showing public URL for slug", data.slug, "→", data.listingUrl);
         }
       }
 

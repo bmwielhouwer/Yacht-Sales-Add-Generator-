@@ -29,17 +29,29 @@ function baseSlug(boatData) {
 
 export async function reserveSlug(boatData) {
   const redis = getRedis();
-  if (!redis) return baseSlug(boatData);
+  if (!redis) {
+    const slug = baseSlug(boatData);
+    console.log("[listings.reserveSlug] no redis configured, returning base slug:", slug);
+    return slug;
+  }
   const base = baseSlug(boatData);
   for (let attempt = 0; attempt < 8; attempt++) {
     const slug = attempt === 0 ? base : `${base}-${randomSuffix()}`;
     const reserveKey = `listing:reserve:${slug}`;
     const existing = await redis.get(`listing:${slug}`);
-    if (existing) continue;
+    if (existing) {
+      console.log("[listings.reserveSlug] collision on", slug, "trying again");
+      continue;
+    }
     const ok = await redis.set(reserveKey, "1", { nx: true, ex: SLUG_TTL_RESERVE });
-    if (ok === "OK" || ok === true) return slug;
+    if (ok) {
+      console.log("[listings.reserveSlug] reserved", { slug, reserveKey, attempt });
+      return slug;
+    }
   }
-  return `${base}-${randomSuffix(6)}`;
+  const slug = `${base}-${randomSuffix(6)}`;
+  console.warn("[listings.reserveSlug] exhausted attempts, falling back to", slug);
+  return slug;
 }
 
 export function getPublicOrigin(req) {
@@ -58,18 +70,31 @@ export function listingUrl(origin, slug) {
 export async function saveListing(slug, record) {
   const redis = getRedis();
   if (!redis) throw new Error("Upstash Redis is not configured");
-  await redis.set(`listing:${slug}`, record);
+  const key = `listing:${slug}`;
+  const bytes = JSON.stringify(record).length;
+  console.log("[listings.saveListing] writing", { key, slug, bytes });
+  await redis.set(key, record);
+  console.log("[listings.saveListing] write complete", { key });
 }
 
 export async function loadListing(slug) {
   const redis = getRedis();
-  if (!redis) return null;
-  const value = await redis.get(`listing:${slug}`);
-  if (!value) return null;
+  if (!redis) {
+    console.warn("[listings.loadListing] no redis configured for slug", slug);
+    return null;
+  }
+  const key = `listing:${slug}`;
+  console.log("[listings.loadListing] reading", { key, slug });
+  const value = await redis.get(key);
+  if (!value) {
+    console.warn("[listings.loadListing] miss for key", key);
+    return null;
+  }
   if (typeof value === "object") return value;
   try {
     return JSON.parse(value);
-  } catch {
+  } catch (err) {
+    console.error("[listings.loadListing] failed to parse value for", key, err);
     return null;
   }
 }
