@@ -54,6 +54,7 @@ export default async function handler(req, res) {
         : existing?.photoOrder ?? [],
       broker: body.broker ?? existing?.broker ?? null,
       listingUrl: body.listingUrl ?? existing?.listingUrl ?? null,
+      status: existing?.status ?? "active",
       created_at: existing?.created_at ?? now,
       updated_at: now,
       view_count: existing?.view_count ?? 0,

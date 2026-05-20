@@ -94,6 +94,8 @@ export async function saveListing(slug, record) {
   }
 }
 
+export const LISTING_STATUSES = ["active", "sale_pending", "sold", "withdrawn"];
+
 export async function loadListing(slug) {
   const redis = getRedis();
   if (!redis) {
@@ -107,13 +109,27 @@ export async function loadListing(slug) {
     console.warn("[listings.loadListing] miss for key", key);
     return null;
   }
-  if (typeof value === "object") return value;
-  try {
-    return JSON.parse(value);
-  } catch (err) {
-    console.error("[listings.loadListing] failed to parse value for", key, err);
-    return null;
+  let record = value;
+  if (typeof value !== "object") {
+    try {
+      record = JSON.parse(value);
+    } catch (err) {
+      console.error("[listings.loadListing] failed to parse value for", key, err);
+      return null;
+    }
   }
+  if (record && typeof record === "object" && !record.status) {
+    record.status = "active";
+    redis
+      .set(key, record)
+      .catch((err) =>
+        console.warn("[listings.loadListing] status backfill write failed", {
+          key,
+          err: err?.message,
+        }),
+      );
+  }
+  return record;
 }
 
 export async function bumpViewCount(slug) {
