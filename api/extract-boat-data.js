@@ -1,5 +1,6 @@
 import { extractBoatData } from "../src/extractBoatData.js";
 import { withGuard } from "./_lib.js";
+import { reserveSlug, getPublicOrigin, listingUrl } from "./_listings.js";
 
 export const config = { maxDuration: 30 };
 
@@ -24,5 +25,9 @@ export default withGuard(async (req, res) => {
     };
   }
 
-  return res.status(200).json({ boatData });
+  const slug = await reserveSlug(boatData);
+  const origin = getPublicOrigin(req);
+  const url = listingUrl(origin, slug);
+
+  return res.status(200).json({ boatData, slug, listingUrl: url });
 });

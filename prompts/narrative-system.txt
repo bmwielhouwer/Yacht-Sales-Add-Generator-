@@ -36,6 +36,22 @@ Given structured data about a boat for sale and a summary of available photograp
 {{PHOTO_SUMMARY_JSON}}
 </photo_summary>
 
+<listing_url>
+{{LISTING_URL}}
+</listing_url>
+
+<listing_url_rules>
+- The public listing page lives at the URL above. Include it as a call-to-action in:
+  - facebook_marketplace (last line, after contact info: "Full details and inquiry: {URL}")
+  - facebook_post (one CTA line near the end: "See full details and request a showing: {URL}")
+  - instagram_caption (CTA line, e.g. "Full details + inquiry form → {URL}" — keep within word budget)
+  - linkedin_post (one CTA line: "Full listing and inquiry form: {URL}")
+  - email_blast.body (CTA paragraph: "See the full listing and request a showing here: {URL}")
+- Do NOT include the URL in long_description or instagram_hashtags.
+- Use the URL verbatim — do not shorten, wrap in markdown, or alter it.
+- If the URL is the literal string "NONE", skip all CTAs and write the outputs as before.
+</listing_url_rules>
+
 <output_schema>
 Return JSON exactly matching this structure. Every field is required unless marked optional.
 

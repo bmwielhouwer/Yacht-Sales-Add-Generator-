@@ -98,6 +98,81 @@ function welcomeHtml({ firstName, code, tier }) {
 </html>`;
 }
 
+function inquiryHtml({ broker, lead, listing }) {
+  const safeBroker = escapeHtml(broker?.name || "there");
+  const boatName = escapeHtml(listing?.boatName || "your listing");
+  const safeLeadName = escapeHtml(lead.name);
+  const safeLeadEmail = escapeHtml(lead.email);
+  const safeLeadPhone = lead.phone ? escapeHtml(lead.phone) : "";
+  const safeMessage = lead.message ? escapeHtml(lead.message).replace(/\n/g, "<br>") : "";
+  const tags = [];
+  if (lead.cash_buyer) tags.push("Cash buyer");
+  if (lead.trade_in) tags.push("Has trade-in");
+  if (lead.financing) tags.push("Needs financing");
+  const tagPills = tags
+    .map(
+      (t) =>
+        `<span style="display:inline-block;background:#F7F7F4;border:1px solid #C8A951;color:#0B2545;border-radius:999px;padding:3px 10px;font-size:12px;margin-right:6px;">${escapeHtml(t)}</span>`,
+    )
+    .join("");
+  const tagsRow = tags.length
+    ? `<tr><td style="padding:8px 0;font-size:13px;color:#5F5F5F;">${tagPills}</td></tr>`
+    : "";
+  const phoneRow = safeLeadPhone
+    ? `<tr><td style="padding:6px 0;font-size:14px;"><strong style="color:#5F5F5F;font-weight:500;">Phone:</strong> <a href="tel:${safeLeadPhone}" style="color:#0B2545;text-decoration:none;">${safeLeadPhone}</a></td></tr>`
+    : "";
+  const messageBlock = safeMessage
+    ? `<tr><td style="padding:14px 0 0 0;"><div style="font-size:12px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Message</div><div style="background:#F7F7F4;border-left:3px solid #C8A951;padding:12px 14px;border-radius:4px;font-size:14px;line-height:1.55;color:#1A1A1A;">${safeMessage}</div></td></tr>`
+    : "";
+  const viewLink = listing?.url
+    ? `<a href="${escapeHtml(listing.url)}" style="color:#2A6F6F;text-decoration:none;font-size:13px;">View listing →</a>`
+    : "";
+  return `<!doctype html>
+<html><body style="margin:0;padding:0;background:#F7F7F4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1A1A1A;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#F7F7F4;padding:32px 16px;">
+  <tr><td align="center">
+    <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#FFFFFF;border:1px solid #e6e3dc;border-radius:12px;box-shadow:0 2px 8px rgba(11,37,69,0.06);">
+      <tr><td style="padding:24px 32px;border-bottom:1px solid #e6e3dc;">
+        <div style="font-size:11px;font-weight:600;color:#C8A951;letter-spacing:0.1em;text-transform:uppercase;">New Inquiry</div>
+        <div style="font-size:20px;font-weight:500;color:#0B2545;margin-top:6px;">${boatName}</div>
+        ${viewLink ? `<div style="margin-top:6px;">${viewLink}</div>` : ""}
+      </td></tr>
+      <tr><td style="padding:24px 32px;">
+        <p style="margin:0 0 14px 0;font-size:15px;color:#1A1A1A;">Hi ${safeBroker} — a buyer just submitted an inquiry on your listing.</p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <tr><td style="padding:6px 0;font-size:14px;"><strong style="color:#5F5F5F;font-weight:500;">Name:</strong> ${safeLeadName}</td></tr>
+          <tr><td style="padding:6px 0;font-size:14px;"><strong style="color:#5F5F5F;font-weight:500;">Email:</strong> <a href="mailto:${safeLeadEmail}" style="color:#0B2545;text-decoration:none;">${safeLeadEmail}</a></td></tr>
+          ${phoneRow}
+          ${tagsRow}
+          ${messageBlock}
+        </table>
+      </td></tr>
+      <tr><td style="padding:18px 32px;background:#F7F7F4;border-top:1px solid #e6e3dc;border-radius:0 0 12px 12px;font-size:12px;color:#5F5F5F;">
+        Compass Line Marine · Reply directly to reach the buyer.
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+}
+
+export async function sendInquiryEmail({ broker, lead, listing }) {
+  const resend = getResend();
+  if (!broker?.email) throw new Error("Broker email missing");
+  const subj = listing?.boatName
+    ? `New inquiry: ${listing.boatName}`
+    : "New inquiry on your listing";
+  const { data, error } = await resend.emails.send({
+    from: "Compass Line Marine <noreply@compasslineventures.com>",
+    to: broker.email,
+    reply_to: lead.email,
+    subject: subj,
+    html: inquiryHtml({ broker, lead, listing }),
+  });
+  if (error) throw new Error(`Resend send failed: ${error.message || JSON.stringify(error)}`);
+  return data;
+}
+
 export async function sendWelcomeEmail({ toEmail, firstName, code, tier }) {
   const resend = getResend();
   const html = welcomeHtml({ firstName: firstName || "there", code, tier });
