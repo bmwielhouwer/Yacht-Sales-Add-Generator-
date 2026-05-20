@@ -376,9 +376,16 @@
           openGate();
           throw new Error("Access code rejected. Please re-enter it.");
         }
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-        return data;
+        const raw = await res.text();
+        let data = null;
+        try { data = raw ? JSON.parse(raw) : {}; } catch {
+          if (!res.ok) {
+            const snippet = raw.slice(0, 200).replace(/\s+/g, " ").trim();
+            throw new Error(`HTTP ${res.status} from ${path} — ${snippet || "non-JSON response"}`);
+          }
+        }
+        if (!res.ok) throw new Error(data?.error || `HTTP ${res.status} from ${path}`);
+        return data ?? {};
       }
 
       const EMPTY_PHOTO_SUMMARY = { photos: [], missing_categories: [], quality_issues: [] };
