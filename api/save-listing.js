@@ -1,4 +1,5 @@
 import { isValidAccessCode } from "./_lib.js";
+import { readSession } from "./_dashboard.js";
 import { loadListing, saveListing } from "./_listings.js";
 
 export const config = { maxDuration: 10 };
@@ -11,9 +12,12 @@ export default async function handler(req, res) {
       res.setHeader("Allow", "POST, PUT");
       return res.status(405).json({ error: "POST or PUT only" });
     }
-    const supplied = req.headers["x-access-code"];
-    if (!(await isValidAccessCode(supplied))) {
-      return res.status(403).json({ error: "Access code required." });
+    const session = readSession(req);
+    if (!session?.email) {
+      const supplied = req.headers["x-access-code"];
+      if (!(await isValidAccessCode(supplied))) {
+        return res.status(403).json({ error: "Access code required." });
+      }
     }
 
     const body = req.body ?? {};

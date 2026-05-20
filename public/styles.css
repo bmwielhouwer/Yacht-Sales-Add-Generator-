@@ -45,33 +45,73 @@ a:hover { text-decoration: underline; }
 .site-header-inner {
   max-width: 1024px;
   margin: 0 auto;
-  padding: 20px 24px;
+  padding: 14px 24px;
   display: flex;
   align-items: center;
   gap: 14px;
 }
 .logo-mark {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   display: block;
   color: var(--navy);
 }
 .wordmark-divider {
   width: 1px;
-  height: 28px;
+  height: 24px;
   background: var(--line-strong);
   margin: 0 4px;
 }
 .wordmark-primary {
   font-weight: 500;
-  font-size: 21px;
+  font-size: 19px;
   color: var(--navy);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 .wordmark-primary a { color: inherit; }
 .wordmark-primary a:hover { text-decoration: none; }
 .header-spacer { flex: 1; }
+.header-cta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+}
+.header-cta:hover {
+  background: var(--surface);
+  border-color: var(--navy);
+  text-decoration: none;
+}
+.header-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.header-account .email {
+  color: var(--ink);
+  font-weight: 500;
+}
+.header-logout {
+  background: none;
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.header-logout:hover {
+  background: var(--bg);
+  color: var(--ink);
+}
 .header-link {
   font-size: 13px;
   color: var(--muted);
@@ -83,6 +123,10 @@ a:hover { text-decoration: underline; }
   border-radius: 4px;
 }
 .header-link:hover { color: var(--navy); background: var(--bg); }
+@media (max-width: 640px) {
+  .site-header-inner { flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
+  .header-account .email { display: none; }
+}
 
 .hero {
   position: relative;
