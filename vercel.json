@@ -10,7 +10,8 @@
     "api/inquiry.js": { "maxDuration": 15 },
     "api/l/[slug].js": { "maxDuration": 10 },
     "api/stripe/webhook.js": { "maxDuration": 15 },
-    "api/dashboard/[action].js": { "maxDuration": 15 }
+    "api/dashboard/[action].js": { "maxDuration": 15 },
+    "api/outreach/[action].js": { "maxDuration": 60 }
   },
   "rewrites": [
     { "source": "/l/:slug", "destination": "/api/l/:slug" }

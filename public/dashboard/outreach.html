@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Outreach — Compass Line Marine</title>
+<meta name="robots" content="noindex,nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/dashboard.css" />
+</head>
+<body>
+
+<div id="db-app">
+  <div class="db-loading">Loading…</div>
+</div>
+
+<template id="tpl-login">
+  <header class="db-header">
+    <div class="db-header-inner">
+      <div class="db-brand"><a href="/">Compass Line Marine</a><small>Broker dashboard</small></div>
+    </div>
+  </header>
+  <main class="db-login">
+    <div class="db-card">
+      <h1>Sign in</h1>
+      <p class="sub">Enter the email and access code you received when you signed up.</p>
+      <form id="login-form" novalidate>
+        <label class="db-field">
+          <span>Email</span>
+          <input name="email" type="email" autocomplete="email" required />
+        </label>
+        <label class="db-field">
+          <span>Access code</span>
+          <input name="code" type="text" autocomplete="off" spellcheck="false" placeholder="CLM-XXXX-XXXXXX" required />
+        </label>
+        <div class="db-form-error" id="login-error"></div>
+        <button type="submit" class="db-submit" id="login-submit">Sign in</button>
+      </form>
+    </div>
+  </main>
+</template>
+
+<template id="tpl-upgrade">
+  <header class="db-header">
+    <div class="db-header-inner">
+      <div class="db-brand"><a href="/">Compass Line Marine</a><small>Broker dashboard</small></div>
+      <nav class="db-nav">
+        <a href="/dashboard">Listings</a>
+        <a href="/dashboard/leads">All leads</a>
+      </nav>
+      <div class="db-account">
+        <span class="tier-badge" data-tier hidden></span>
+        <a href="/" class="db-cta">Create new listing</a>
+        <span class="email" data-email></span>
+        <button type="button" class="db-logout" data-logout>Sign out</button>
+      </div>
+    </div>
+  </header>
+  <main class="db-main">
+    <div class="db-card db-empty">
+      <h3>Buyer Outreach is a Suite feature</h3>
+      <p>Personalized AI-written outreach to your buyer contacts — 200 emails per month — is included with the Full Suite plan.</p>
+      <a class="db-btn db-btn-primary" href="/pricing">See pricing</a>
+    </div>
+  </main>
+  <footer class="db-footer">Compass Line Marine · Built for serious yacht brokers</footer>
+</template>
+
+<template id="tpl-outreach">
+  <header class="db-header">
+    <div class="db-header-inner">
+      <div class="db-brand"><a href="/">Compass Line Marine</a><small>Broker dashboard</small></div>
+      <nav class="db-nav">
+        <a href="/dashboard">Listings</a>
+        <a href="/dashboard/leads">All leads</a>
+      </nav>
+      <div class="db-account">
+        <span class="tier-badge" data-tier hidden></span>
+        <a href="/" class="db-cta">Create new listing</a>
+        <span class="email" data-email></span>
+        <button type="button" class="db-logout" data-logout>Sign out</button>
+      </div>
+    </div>
+  </header>
+  <main class="db-main">
+    <h1 class="db-page-title" id="outreach-title">Buyer outreach</h1>
+    <p class="db-page-sub" id="outreach-sub">Personalized emails to buyers who match this listing.</p>
+
+    <div class="db-tabs" id="db-tabs">
+      <a href="#" id="tab-leads" class="db-tab">Leads</a>
+      <a href="#" id="tab-outreach" class="db-tab active">Outreach</a>
+    </div>
+
+    <div class="outreach-usage" id="outreach-usage">
+      <div class="outreach-usage-row">
+        <span class="outreach-usage-label" id="outreach-usage-label">— / 200 emails this month</span>
+        <span class="outreach-usage-month" id="outreach-usage-month"></span>
+      </div>
+      <div class="outreach-usage-bar"><div class="outreach-usage-fill" id="outreach-usage-fill"></div></div>
+    </div>
+
+    <section class="db-card outreach-contacts" id="outreach-contacts">
+      <div class="outreach-card-header">
+        <div>
+          <h2 class="outreach-card-title">Your contacts</h2>
+          <p class="outreach-card-sub" id="contacts-sub">Loading…</p>
+        </div>
+        <div class="outreach-card-actions">
+          <a class="db-btn" href="/api/outreach/template">Download CSV template</a>
+          <button type="button" class="db-btn" id="upload-btn">Upload CSV</button>
+          <input type="file" id="csv-input" accept=".csv,text/csv" style="display:none" />
+        </div>
+      </div>
+      <div id="contacts-body">
+        <div class="db-loading">Loading contacts…</div>
+      </div>
+      <div class="outreach-generate-row" id="generate-row" hidden>
+        <span class="outreach-selected-count" id="selected-count">0 selected</span>
+        <button type="button" class="db-btn db-btn-primary" id="generate-btn" disabled>Generate outreach for selected</button>
+      </div>
+    </section>
+
+    <section class="db-card outreach-drafts" id="outreach-drafts" hidden>
+      <h2 class="outreach-card-title">Drafts</h2>
+      <p class="outreach-card-sub">Review, edit, and send. Mark each as sent when you've delivered it.</p>
+      <div id="drafts-list"></div>
+    </section>
+  </main>
+  <footer class="db-footer">Compass Line Marine · Built for serious yacht brokers</footer>
+
+  <div class="db-toast" id="db-toast" hidden></div>
+</template>
+
+<script>
+(function() {
+  const app = document.getElementById("db-app");
+
+  function el(tag, attrs = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k === "class") node.className = v;
+      else if (k === "html") node.innerHTML = v;
+      else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2), v);
+      else node.setAttribute(k, v);
+    }
+    for (const c of children) {
+      if (c == null) continue;
+      node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    }
+    return node;
+  }
+  function render(templateId) {
+    const tpl = document.getElementById(templateId);
+    app.innerHTML = "";
+    app.appendChild(tpl.content.cloneNode(true));
+  }
+  function urlSlug() {
+    const p = new URLSearchParams(location.search);
+    return (p.get("slug") || "").trim();
+  }
+  async function fetchJSON(url, opts = {}) {
+    const res = await fetch(url, {
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+      ...opts,
+    });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : {}; } catch {
+      if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}`), { status: res.status });
+    }
+    if (!res.ok) {
+      const err = new Error(data?.error || `HTTP ${res.status}`);
+      err.status = res.status;
+      err.payload = data;
+      throw err;
+    }
+    return data;
+  }
+
+  const TIER_LABELS = { LISTING: "PER-LISTING", STUDIO: "STUDIO", SUITE: "SUITE" };
+  function bindHeader(email, tier) {
+    document.querySelectorAll("[data-email]").forEach((n) => { n.textContent = email; });
+    document.querySelectorAll("[data-tier]").forEach((n) => {
+      const t = tier ? String(tier).toUpperCase() : null;
+      if (!t || !TIER_LABELS[t]) {
+        n.hidden = true;
+        n.textContent = "";
+        n.className = "tier-badge";
+        return;
+      }
+      n.hidden = false;
+      n.textContent = TIER_LABELS[t];
+      n.className = "tier-badge tier-" + t.toLowerCase();
+    });
+    document.querySelectorAll("[data-logout]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try { await fetchJSON("/api/dashboard/logout", { method: "POST" }); } catch {}
+        location.reload();
+      });
+    });
+  }
+
+  function showLogin() {
+    render("tpl-login");
+    const form = document.getElementById("login-form");
+    const submit = document.getElementById("login-submit");
+    const errEl = document.getElementById("login-error");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errEl.textContent = "";
+      submit.disabled = true;
+      submit.textContent = "Signing in…";
+      try {
+        const fd = new FormData(form);
+        await fetchJSON("/api/dashboard/login", {
+          method: "POST",
+          body: JSON.stringify({
+            email: fd.get("email"),
+            code: String(fd.get("code") || "").toUpperCase(),
+          }),
+        });
+        location.reload();
+      } catch (err) {
+        errEl.textContent = err.message || "Sign in failed.";
+        submit.disabled = false;
+        submit.textContent = "Sign in";
+      }
+    });
+    setTimeout(() => form.querySelector("input[name=email]")?.focus(), 30);
+  }
+
+  function showUpgrade(me) {
+    render("tpl-upgrade");
+    bindHeader(me?.email ?? "", me?.tier ?? null);
+  }
+
+  function toast(msg) {
+    const t = document.getElementById("db-toast");
+    if (!t) return;
+    t.textContent = msg;
+    t.hidden = false;
+    requestAnimationFrame(() => t.classList.add("show"));
+    setTimeout(() => {
+      t.classList.remove("show");
+      setTimeout(() => { t.hidden = true; }, 250);
+    }, 1800);
+  }
+
+  function setTabHrefs(slug) {
+    const q = "?slug=" + encodeURIComponent(slug);
+    document.getElementById("tab-leads").href = "/dashboard/leads" + q;
+    document.getElementById("tab-outreach").href = "/dashboard/outreach" + q;
+  }
+
+  function renderUsage(usage) {
+    if (!usage) return;
+    const label = document.getElementById("outreach-usage-label");
+    const fill = document.getElementById("outreach-usage-fill");
+    const month = document.getElementById("outreach-usage-month");
+    label.textContent = `${usage.used} / ${usage.cap} emails this month`;
+    const pct = Math.min(100, Math.round((usage.used / Math.max(1, usage.cap)) * 100));
+    fill.style.width = pct + "%";
+    if (usage.month) month.textContent = usage.month;
+    const wrap = document.getElementById("outreach-usage");
+    wrap.classList.toggle("near-cap", usage.used / usage.cap >= 0.9);
+  }
+
+  let contactsCache = [];
+  const selectedEmails = new Set();
+  let usageCache = { used: 0, cap: 200 };
+
+  function updateSelectionUi() {
+    const count = selectedEmails.size;
+    document.getElementById("selected-count").textContent = `${count} selected`;
+    const btn = document.getElementById("generate-btn");
+    btn.disabled = count === 0 || usageCache.used + count > usageCache.cap;
+    if (count === 0) btn.textContent = "Generate outreach for selected";
+    else btn.textContent = `Generate outreach for ${count} contact${count === 1 ? "" : "s"}`;
+    document.getElementById("generate-row").hidden = contactsCache.length === 0;
+    const remaining = usageCache.cap - usageCache.used;
+    if (usageCache.used + count > usageCache.cap) {
+      btn.textContent = `Over monthly cap — ${remaining} remaining`;
+    }
+  }
+
+  function renderContacts() {
+    const body = document.getElementById("contacts-body");
+    const sub = document.getElementById("contacts-sub");
+    body.innerHTML = "";
+    if (contactsCache.length === 0) {
+      sub.textContent = "No contacts yet.";
+      body.appendChild(
+        el("div", { class: "db-empty outreach-empty" },
+          el("p", {}, "Upload a CSV to get started. Required columns: name, email. Optional: boat_prefs, notes."),
+        ),
+      );
+      document.getElementById("generate-row").hidden = true;
+      return;
+    }
+    sub.textContent = `${contactsCache.length} contact${contactsCache.length === 1 ? "" : "s"}.`;
+
+    const table = el("table", { class: "outreach-contacts-table" });
+    const thead = el("thead", {});
+    const headRow = el("tr", {});
+    const selectAll = el("input", { type: "checkbox", id: "select-all" });
+    selectAll.addEventListener("change", () => {
+      if (selectAll.checked) for (const c of contactsCache) selectedEmails.add(c.email);
+      else selectedEmails.clear();
+      paintRowChecks();
+      updateSelectionUi();
+    });
+    headRow.appendChild(el("th", { class: "outreach-col-check" }, selectAll));
+    headRow.appendChild(el("th", {}, "Name"));
+    headRow.appendChild(el("th", {}, "Email"));
+    headRow.appendChild(el("th", {}, "Boat preferences"));
+    headRow.appendChild(el("th", {}, "Notes"));
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = el("tbody", {});
+    for (const c of contactsCache) {
+      const cb = el("input", { type: "checkbox" });
+      cb.dataset.email = c.email;
+      cb.checked = selectedEmails.has(c.email);
+      cb.addEventListener("change", () => {
+        if (cb.checked) selectedEmails.add(c.email);
+        else selectedEmails.delete(c.email);
+        const all = document.getElementById("select-all");
+        if (all) all.checked = selectedEmails.size === contactsCache.length;
+        updateSelectionUi();
+      });
+      const row = el("tr", { class: "outreach-contact-row" },
+        el("td", { class: "outreach-col-check" }, cb),
+        el("td", { class: "outreach-name" }, c.name),
+        el("td", { class: "outreach-email" }, c.email),
+        el("td", { class: "outreach-prefs" }, c.boat_prefs || ""),
+        el("td", { class: "outreach-notes" }, c.notes || ""),
+      );
+      tbody.appendChild(row);
+    }
+    table.appendChild(tbody);
+    body.appendChild(table);
+    document.getElementById("generate-row").hidden = false;
+    updateSelectionUi();
+  }
+
+  function paintRowChecks() {
+    for (const cb of document.querySelectorAll(".outreach-contact-row input[type=checkbox]")) {
+      cb.checked = selectedEmails.has(cb.dataset.email);
+    }
+  }
+
+  function gmailComposeUrl(to, subject, body) {
+    const u = new URL("https://mail.google.com/mail/");
+    u.searchParams.set("view", "cm");
+    u.searchParams.set("fs", "1");
+    u.searchParams.set("to", to);
+    if (subject) u.searchParams.set("su", subject);
+    if (body) u.searchParams.set("body", body);
+    return u.toString();
+  }
+
+  function renderDrafts(drafts) {
+    const section = document.getElementById("outreach-drafts");
+    const list = document.getElementById("drafts-list");
+    list.innerHTML = "";
+    if (!drafts || drafts.length === 0) {
+      section.hidden = true;
+      return;
+    }
+    section.hidden = false;
+    const sorted = [...drafts].sort((a, b) => {
+      const aSent = a.status === "sent" ? 1 : 0;
+      const bSent = b.status === "sent" ? 1 : 0;
+      if (aSent !== bSent) return aSent - bSent;
+      return (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0);
+    });
+    for (const d of sorted) list.appendChild(draftCard(d));
+  }
+
+  function draftCard(draft) {
+    const sent = draft.status === "sent";
+    const card = el("div", { class: "outreach-draft" + (sent ? " is-sent" : "") });
+    card.dataset.key = draft.key;
+
+    const head = el("div", { class: "outreach-draft-head" },
+      el("div", { class: "outreach-draft-who" },
+        el("strong", {}, draft.contact?.name || draft.contact?.email || "Buyer"),
+        el("span", { class: "outreach-draft-email" }, draft.contact?.email || ""),
+      ),
+      sent ? el("span", { class: "outreach-draft-status" }, "Sent") : null,
+    );
+    card.appendChild(head);
+
+    const subject = el("input", { type: "text", class: "outreach-draft-subject", value: draft.subject || "" });
+    subject.disabled = sent;
+    card.appendChild(el("label", { class: "outreach-draft-field" },
+      el("span", {}, "Subject"),
+      subject,
+    ));
+
+    const body = el("textarea", { class: "outreach-draft-body", rows: 9 });
+    body.value = draft.body || "";
+    body.disabled = sent;
+    card.appendChild(el("label", { class: "outreach-draft-field" },
+      el("span", {}, "Body"),
+      body,
+    ));
+
+    const actions = el("div", { class: "outreach-draft-actions" });
+    if (!sent) {
+      const saveBtn = el("button", { type: "button", class: "db-btn" }, "Save edits");
+      saveBtn.addEventListener("click", async () => {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving…";
+        try {
+          await fetchJSON("/api/outreach/update-draft", {
+            method: "POST",
+            body: JSON.stringify({
+              key: draft.key,
+              subject: subject.value,
+              body: body.value,
+            }),
+          });
+          toast("Draft saved.");
+        } catch (err) {
+          toast(err.message || "Save failed.");
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Save edits";
+        }
+      });
+      actions.appendChild(saveBtn);
+
+      const gmailBtn = el("a", {
+        class: "db-btn db-btn-primary",
+        target: "_blank",
+        rel: "noopener",
+      }, "Send via Gmail");
+      gmailBtn.addEventListener("click", () => {
+        gmailBtn.href = gmailComposeUrl(draft.contact?.email || "", subject.value, body.value);
+      });
+      gmailBtn.href = gmailComposeUrl(draft.contact?.email || "", subject.value, body.value);
+      actions.appendChild(gmailBtn);
+
+      const copyBtn = el("button", { type: "button", class: "db-btn" }, "Copy to clipboard");
+      copyBtn.addEventListener("click", async () => {
+        const text = `Subject: ${subject.value}\n\n${body.value}`;
+        try {
+          await navigator.clipboard.writeText(text);
+          toast("Copied.");
+        } catch {
+          toast("Copy failed. Select manually.");
+        }
+      });
+      actions.appendChild(copyBtn);
+
+      const sentBtn = el("button", { type: "button", class: "db-btn" }, "Mark as sent");
+      sentBtn.addEventListener("click", async () => {
+        sentBtn.disabled = true;
+        try {
+          const resp = await fetchJSON("/api/outreach/mark-sent", {
+            method: "POST",
+            body: JSON.stringify({ key: draft.key }),
+          });
+          const idx = currentDrafts.findIndex((x) => x.key === draft.key);
+          if (idx >= 0) currentDrafts[idx] = resp.draft;
+          renderDrafts(currentDrafts);
+          toast("Marked as sent.");
+        } catch (err) {
+          sentBtn.disabled = false;
+          toast(err.message || "Failed.");
+        }
+      });
+      actions.appendChild(sentBtn);
+    } else {
+      const reopenNote = el("span", { class: "outreach-draft-note" }, "Sent " + (draft.sent_at ? new Date(draft.sent_at).toLocaleString() : ""));
+      actions.appendChild(reopenNote);
+    }
+    card.appendChild(actions);
+
+    return card;
+  }
+
+  let currentDrafts = [];
+
+  function wireUploadButton() {
+    const btn = document.getElementById("upload-btn");
+    const input = document.getElementById("csv-input");
+    btn.addEventListener("click", () => input.click());
+    input.addEventListener("change", async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      btn.disabled = true;
+      btn.textContent = "Uploading…";
+      try {
+        const csv = await file.text();
+        const resp = await fetchJSON("/api/outreach/upload-contacts", {
+          method: "POST",
+          body: JSON.stringify({ csv }),
+        });
+        contactsCache = resp.contacts || [];
+        selectedEmails.clear();
+        renderContacts();
+        toast(`Loaded ${resp.count} contact${resp.count === 1 ? "" : "s"}.`);
+      } catch (err) {
+        toast(err.message || "Upload failed.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Upload CSV";
+        input.value = "";
+      }
+    });
+  }
+
+  function wireGenerateButton(slug) {
+    const btn = document.getElementById("generate-btn");
+    btn.addEventListener("click", async () => {
+      if (selectedEmails.size === 0) return;
+      btn.disabled = true;
+      const prevText = btn.textContent;
+      btn.textContent = "Generating…";
+      try {
+        const resp = await fetchJSON("/api/outreach/generate", {
+          method: "POST",
+          body: JSON.stringify({
+            listing_slug: slug,
+            selected_contact_emails: Array.from(selectedEmails),
+          }),
+        });
+        usageCache = resp.usage || usageCache;
+        renderUsage(usageCache);
+        const newDrafts = Array.isArray(resp.drafts) ? resp.drafts : [];
+        currentDrafts = [...newDrafts, ...currentDrafts];
+        renderDrafts(currentDrafts);
+        selectedEmails.clear();
+        const sa = document.getElementById("select-all");
+        if (sa) sa.checked = false;
+        paintRowChecks();
+        const failedCount = (resp.failed || []).length;
+        if (failedCount > 0) {
+          toast(`Generated ${newDrafts.length}, ${failedCount} failed.`);
+        } else {
+          toast(`Generated ${newDrafts.length} draft${newDrafts.length === 1 ? "" : "s"}.`);
+        }
+        updateSelectionUi();
+      } catch (err) {
+        if (err.status === 429 && err.payload?.usage) {
+          usageCache = err.payload.usage;
+          renderUsage(usageCache);
+        }
+        toast(err.message || "Generation failed.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = prevText;
+        updateSelectionUi();
+      }
+    });
+  }
+
+  async function loadOutreach(slug) {
+    render("tpl-outreach");
+    setTabHrefs(slug);
+    try {
+      const me = await fetchJSON("/api/dashboard/me");
+      if (me.tier !== "SUITE") {
+        showUpgrade(me);
+        return;
+      }
+      bindHeader(me.email, me.tier);
+
+      const [c, d] = await Promise.all([
+        fetchJSON("/api/outreach/contacts"),
+        fetchJSON("/api/outreach/drafts?slug=" + encodeURIComponent(slug)),
+      ]);
+      contactsCache = c.contacts || [];
+      usageCache = c.usage || usageCache;
+      currentDrafts = d.drafts || [];
+
+      renderUsage(usageCache);
+      renderContacts();
+      renderDrafts(currentDrafts);
+      wireUploadButton();
+      wireGenerateButton(slug);
+
+      const title = document.getElementById("outreach-title");
+      const sub = document.getElementById("outreach-sub");
+      title.textContent = `Buyer outreach`;
+      sub.textContent = `Personalized emails for listing ${slug}. Edit any draft before sending.`;
+    } catch (err) {
+      if (err.status === 401) { showLogin(); return; }
+      if (err.status === 403 && err.payload?.upgrade) {
+        showUpgrade({ email: "", tier: null });
+        return;
+      }
+      app.innerHTML = "";
+      app.appendChild(el("div", { class: "db-error" }, err.message || "Couldn't load outreach."));
+    }
+  }
+
+  const slug = urlSlug();
+  if (!slug) {
+    render("tpl-outreach");
+    const sub = document.getElementById("outreach-sub");
+    sub.innerHTML = "";
+    sub.appendChild(document.createTextNode("Open this from one of your listings. "));
+    sub.appendChild(el("a", { href: "/dashboard" }, "Back to listings"));
+    document.getElementById("outreach-usage").hidden = true;
+    document.getElementById("outreach-contacts").hidden = true;
+  } else {
+    loadOutreach(slug);
+  }
+})();
+</script>
+
+</body>
+</html>

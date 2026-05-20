@@ -169,7 +169,7 @@ async function listingsHandler(req, res) {
     })
     .filter(Boolean);
 
-  return res.status(200).json({ email: session.email, listings });
+  return res.status(200).json({ email: session.email, tier: session.tier ?? null, listings });
 }
 
 async function listLeads(req, res, session) {
@@ -236,6 +236,7 @@ async function listLeads(req, res, session) {
 
   return res.status(200).json({
     email: session.email,
+    tier: session.tier ?? null,
     statuses: LEAD_STATUSES,
     leads,
   });

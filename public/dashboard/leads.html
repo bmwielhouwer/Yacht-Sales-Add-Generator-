@@ -61,6 +61,10 @@
   <main class="db-main">
     <h1 class="db-page-title" id="leads-title">All leads</h1>
     <p class="db-page-sub" id="leads-sub">Every inquiry from every listing.</p>
+    <div class="db-tabs" id="db-tabs" hidden>
+      <a href="#" id="tab-leads" class="db-tab active">Leads</a>
+      <a href="#" id="tab-outreach" class="db-tab" hidden>Outreach</a>
+    </div>
     <div class="db-controls">
       <label for="filter-status">Status</label>
       <select id="filter-status" class="db-select">
@@ -470,6 +474,17 @@
       sub.innerHTML = "";
       sub.appendChild(document.createTextNode("Inquiries on this listing. "));
       sub.appendChild(el("a", { href: "/dashboard/leads" }, "See all leads"));
+
+      const tabs = document.getElementById("db-tabs");
+      if (tabs) {
+        tabs.hidden = false;
+        const q = "?slug=" + encodeURIComponent(slugFilter);
+        const leadsTab = document.getElementById("tab-leads");
+        const outreachTab = document.getElementById("tab-outreach");
+        leadsTab.href = "/dashboard/leads" + q;
+        outreachTab.href = "/dashboard/outreach" + q;
+        if (data.tier === "SUITE") outreachTab.hidden = false;
+      }
     }
 
     const filter = document.getElementById("filter-status");

@@ -231,6 +231,7 @@
 
   let allListings = [];
   let showWithdrawn = false;
+  let brokerTier = null;
 
   function buildRow(item) {
     const status = item.status || "active";
@@ -255,6 +256,13 @@
     const actions = el("div", { class: "db-listing-actions" },
       el("a", { class: "db-btn", href: item.url, target: "_blank", rel: "noopener" }, "View public page"),
       el("button", { type: "button", class: "db-btn" }, "Edit"),
+    );
+    if (brokerTier === "SUITE") {
+      actions.appendChild(
+        el("a", { class: "db-btn", href: "/dashboard/outreach?slug=" + encodeURIComponent(item.slug) }, "Outreach"),
+      );
+    }
+    actions.appendChild(
       el("a", { class: "db-btn db-btn-primary", href: "/dashboard/leads?slug=" + encodeURIComponent(item.slug) }, "See leads"),
     );
 
@@ -299,6 +307,7 @@
   function renderListings(data) {
     render("tpl-listings");
     bindHeader(data.email, data.tier);
+    brokerTier = data.tier ?? null;
     allListings = Array.isArray(data.listings) ? data.listings.slice() : [];
     const controls = document.getElementById("listings-controls");
     if (controls) {
