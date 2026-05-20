@@ -8,23 +8,15 @@ let _redisLogged = false;
 export function getRedis() {
   if (_redis) return _redis;
 
-  const url =
-    process.env.UPSTASH_REDIS_REST_URL ||
-    process.env.KV_REST_API_URL ||
-    process.env.STORAGE_REST_API_URL;
-  const token =
-    process.env.UPSTASH_REDIS_REST_TOKEN ||
-    process.env.KV_REST_API_TOKEN ||
-    process.env.STORAGE_REST_API_TOKEN;
+  const url = process.env.UPSTASH_REDIS_REST_KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
 
   if (!url || !token) {
     if (!_redisLogged) {
       _redisLogged = true;
       console.warn("[redis] no client — env vars not found", {
-        UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL ? "set" : "missing",
-        UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN ? "set" : "missing",
-        KV_REST_API_URL: process.env.KV_REST_API_URL ? "set" : "missing",
-        KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN ? "set" : "missing",
+        UPSTASH_REDIS_REST_KV_REST_API_URL: url ? "set" : "missing",
+        UPSTASH_REDIS_REST_KV_REST_API_TOKEN: token ? "set" : "missing",
         VERCEL_ENV: process.env.VERCEL_ENV ?? "unknown",
       });
     }
@@ -34,12 +26,7 @@ export function getRedis() {
   _redis = new Redis({ url, token });
   if (!_redisLogged) {
     _redisLogged = true;
-    const source = process.env.UPSTASH_REDIS_REST_URL
-      ? "UPSTASH_REDIS_REST_*"
-      : process.env.KV_REST_API_URL
-        ? "KV_REST_API_*"
-        : "STORAGE_REST_API_*";
-    console.log("[redis] client ready", { source, VERCEL_ENV: process.env.VERCEL_ENV ?? "unknown" });
+    console.log("[redis] client ready", { VERCEL_ENV: process.env.VERCEL_ENV ?? "unknown" });
   }
   return _redis;
 }
