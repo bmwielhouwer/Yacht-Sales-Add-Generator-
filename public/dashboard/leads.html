@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Leads — Compass Line Marine</title>
+<meta name="robots" content="noindex,nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/dashboard.css" />
+</head>
+<body>
+
+<div id="db-app">
+  <div class="db-loading">Loading…</div>
+</div>
+
+<template id="tpl-login">
+  <header class="db-header">
+    <div class="db-header-inner">
+      <div class="db-brand">Compass Line Marine<small>Broker dashboard</small></div>
+    </div>
+  </header>
+  <main class="db-login">
+    <div class="db-card">
+      <h1>Sign in</h1>
+      <p class="sub">Enter the email and access code you received when you signed up.</p>
+      <form id="login-form" novalidate>
+        <label class="db-field">
+          <span>Email</span>
+          <input name="email" type="email" autocomplete="email" required />
+        </label>
+        <label class="db-field">
+          <span>Access code</span>
+          <input name="code" type="text" autocomplete="off" spellcheck="false" placeholder="CLM-XXXX-XXXXXX" required />
+        </label>
+        <div class="db-form-error" id="login-error"></div>
+        <button type="submit" class="db-submit" id="login-submit">Sign in</button>
+      </form>
+    </div>
+  </main>
+</template>
+
+<template id="tpl-leads">
+  <header class="db-header">
+    <div class="db-header-inner">
+      <div class="db-brand">Compass Line Marine<small>Broker dashboard</small></div>
+      <nav class="db-nav">
+        <a href="/dashboard">Listings</a>
+        <a href="/dashboard/leads" class="active">All leads</a>
+      </nav>
+      <div class="db-account">
+        <span class="email" data-email></span>
+        <button type="button" class="db-logout" data-logout>Sign out</button>
+      </div>
+    </div>
+  </header>
+  <main class="db-main">
+    <h1 class="db-page-title" id="leads-title">All leads</h1>
+    <p class="db-page-sub" id="leads-sub">Every inquiry from every listing.</p>
+    <div class="db-controls">
+      <label for="filter-status">Status</label>
+      <select id="filter-status" class="db-select">
+        <option value="">All statuses</option>
+      </select>
+      <label for="sort-by">Sort by</label>
+      <select id="sort-by" class="db-select">
+        <option value="date-desc">Newest first</option>
+        <option value="date-asc">Oldest first</option>
+        <option value="status">Status</option>
+      </select>
+    </div>
+    <div id="leads-list">
+      <div class="db-loading">Loading leads…</div>
+    </div>
+  </main>
+  <footer class="db-footer">Compass Line Marine · Built for serious yacht brokers</footer>
+</template>
+
+<script>
+(function() {
+  const app = document.getElementById("db-app");
+
+  const STATUS_CLASS = {
+    "New": "db-status-New",
+    "Contacted": "db-status-Contacted",
+    "Showing Scheduled": "db-status-Showing",
+    "Closed-Won": "db-status-Won",
+    "Closed-Lost": "db-status-Lost",
+  };
+  const STATUS_ORDER = ["New", "Contacted", "Showing Scheduled", "Closed-Won", "Closed-Lost"];
+
+  function el(tag, attrs = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") node.className = v;
+      else if (k === "html") node.innerHTML = v;
+      else if (v != null) node.setAttribute(k, v);
+    }
+    for (const c of children) {
+      if (c == null) continue;
+      node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    }
+    return node;
+  }
+
+  function fmtWhen(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    const today = new Date();
+    const sameDay = d.toDateString() === today.toDateString();
+    if (sameDay) return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function telHref(phone) {
+    if (!phone) return null;
+    const digits = String(phone).replace(/[^+0-9]/g, "");
+    return digits ? "tel:" + digits : null;
+  }
+
+  function render(templateId) {
+    app.innerHTML = "";
+    const tpl = document.getElementById(templateId);
+    app.appendChild(tpl.content.cloneNode(true));
+  }
+
+  async function fetchJSON(url, opts = {}) {
+    const res = await fetch(url, {
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+      ...opts,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || ("HTTP " + res.status));
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+
+  function bindHeader(email) {
+    document.querySelectorAll("[data-email]").forEach((n) => { n.textContent = email; });
+    document.querySelectorAll("[data-logout]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try { await fetchJSON("/api/dashboard/logout", { method: "POST" }); } catch {}
+        location.reload();
+      });
+    });
+  }
+
+  function showLogin(prefillError) {
+    render("tpl-login");
+    const form = document.getElementById("login-form");
+    const errEl = document.getElementById("login-error");
+    const submit = document.getElementById("login-submit");
+    if (prefillError) {
+      errEl.textContent = prefillError;
+      errEl.classList.add("show");
+    }
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errEl.classList.remove("show");
+      const fd = new FormData(form);
+      const payload = {
+        email: String(fd.get("email") || "").trim(),
+        code: String(fd.get("code") || "").trim().toUpperCase(),
+      };
+      submit.disabled = true;
+      submit.textContent = "Signing in…";
+      try {
+        await fetchJSON("/api/dashboard/login", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        location.reload();
+      } catch (err) {
+        errEl.textContent = err.message || "Sign-in failed.";
+        errEl.classList.add("show");
+      } finally {
+        submit.disabled = false;
+        submit.textContent = "Sign in";
+      }
+    });
+    setTimeout(() => form.querySelector("input[name=email]")?.focus(), 30);
+  }
+
+  function urlSlugParam() {
+    const p = new URLSearchParams(location.search);
+    const s = p.get("slug");
+    return s && /^[a-z0-9-]+$/.test(s) ? s : null;
+  }
+
+  function debounce(fn, ms) {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  function statusBadge(status) {
+    const cls = STATUS_CLASS[status] || "db-status-New";
+    return el("span", { class: "db-status-badge " + cls }, status);
+  }
+
+  function leadCard(lead, statuses) {
+    const tags = [];
+    if (lead.cash_buyer) tags.push("Cash buyer");
+    if (lead.trade_in) tags.push("Has trade-in");
+    if (lead.financing) tags.push("Needs financing");
+
+    const head = el("div", { class: "db-lead-head" },
+      el("h3", { class: "db-lead-name" }, lead.name || "(no name)"),
+      el("span", { class: "db-lead-time" }, fmtWhen(lead.created_at)),
+    );
+
+    const tagsRow = tags.length
+      ? el("div", { class: "db-lead-tags" }, ...tags.map((t) => el("span", { class: "db-tag" }, t)))
+      : null;
+
+    const contact = el("div", { class: "db-lead-contact" });
+    if (lead.email) {
+      contact.appendChild(el("span", {},
+        el("span", { class: "label" }, "EMAIL"),
+        el("a", { href: "mailto:" + lead.email }, lead.email),
+      ));
+    }
+    const tel = telHref(lead.phone);
+    if (tel) {
+      contact.appendChild(el("span", {},
+        el("span", { class: "label" }, "PHONE"),
+        el("a", { href: tel }, lead.phone),
+      ));
+    }
+
+    const listingRow = lead.listing && lead.listing.url
+      ? el("div", { class: "db-lead-listing" },
+          "From listing: ",
+          el("a", { href: lead.listing.url, target: "_blank", rel: "noopener" },
+            lead.listing.boatName || lead.slug || "View listing"),
+        )
+      : null;
+
+    const msg = lead.message
+      ? el("div", { class: "db-lead-msg" }, lead.message)
+      : null;
+
+    const statusSelect = el("select", { class: "db-select" });
+    for (const s of statuses) {
+      const opt = el("option", { value: s }, s);
+      if (s === lead.status) opt.setAttribute("selected", "selected");
+      statusSelect.appendChild(opt);
+    }
+    const statusBadgeEl = statusBadge(lead.status);
+
+    const statusRow = el("div", { class: "row" },
+      el("label", { for: "" }, "Status"),
+      statusSelect,
+      statusBadgeEl,
+    );
+
+    const notesArea = el("textarea", {
+      class: "db-notes",
+      placeholder: "Private notes — saved automatically when you tab out.",
+    });
+    notesArea.value = lead.notes || "";
+    const notesState = el("div", { class: "db-notes-state" });
+
+    const notesWrap = el("div", {},
+      el("label", { style: "display:block;margin-bottom:4px;" }, "Notes"),
+      notesArea,
+      notesState,
+    );
+
+    const controls = el("div", { class: "db-lead-controls" }, statusRow, notesWrap);
+
+    async function saveLead(patch, stateNode, opts) {
+      try {
+        if (stateNode) {
+          stateNode.className = "db-notes-state saving";
+          stateNode.textContent = "Saving…";
+        }
+        await fetchJSON("/api/dashboard/leads", {
+          method: "POST",
+          body: JSON.stringify({ key: lead.key, ...patch }),
+        });
+        if (patch.status) {
+          lead.status = patch.status;
+          statusBadgeEl.replaceWith(statusBadge(patch.status));
+        }
+        if (stateNode) {
+          stateNode.className = "db-notes-state saved";
+          stateNode.textContent = "Saved";
+          setTimeout(() => {
+            if (stateNode.classList.contains("saved")) stateNode.textContent = "";
+          }, 1800);
+        }
+      } catch (err) {
+        if (stateNode) {
+          stateNode.className = "db-notes-state error";
+          stateNode.textContent = err.message || "Save failed";
+        } else {
+          alert("Couldn't save: " + (err.message || "error"));
+        }
+      }
+    }
+
+    statusSelect.addEventListener("change", () => {
+      saveLead({ status: statusSelect.value });
+    });
+    let lastNotesSaved = notesArea.value;
+    notesArea.addEventListener("blur", () => {
+      if (notesArea.value === lastNotesSaved) return;
+      lastNotesSaved = notesArea.value;
+      saveLead({ notes: notesArea.value }, notesState);
+    });
+
+    const card = el("div", { class: "db-lead", "data-status": lead.status, "data-key": lead.key });
+    card.appendChild(head);
+    if (tagsRow) card.appendChild(tagsRow);
+    if (contact.children.length) card.appendChild(contact);
+    if (listingRow) card.appendChild(listingRow);
+    if (msg) card.appendChild(msg);
+    card.appendChild(controls);
+    return card;
+  }
+
+  function applyFiltersAndSort(leads, status, sort) {
+    let out = leads;
+    if (status) out = out.filter((l) => (l.status || "New") === status);
+    if (sort === "date-asc") {
+      out = [...out].sort((a, b) =>
+        (Date.parse(a.created_at) || 0) - (Date.parse(b.created_at) || 0));
+    } else if (sort === "status") {
+      out = [...out].sort((a, b) => {
+        const ia = STATUS_ORDER.indexOf(a.status || "New");
+        const ib = STATUS_ORDER.indexOf(b.status || "New");
+        if (ia !== ib) return ia - ib;
+        return (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0);
+      });
+    } else {
+      out = [...out].sort((a, b) =>
+        (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0));
+    }
+    return out;
+  }
+
+  function renderLeads(data, slugFilter) {
+    render("tpl-leads");
+    bindHeader(data.email);
+
+    if (slugFilter) {
+      const title = document.getElementById("leads-title");
+      const sub = document.getElementById("leads-sub");
+      const boatName = data.leads.find((l) => l.slug === slugFilter)?.listing?.boatName;
+      title.textContent = boatName ? `Leads for ${boatName}` : `Leads for ${slugFilter}`;
+      sub.innerHTML = "";
+      sub.appendChild(document.createTextNode("Inquiries on this listing. "));
+      sub.appendChild(el("a", { href: "/dashboard/leads" }, "See all leads"));
+    }
+
+    const filter = document.getElementById("filter-status");
+    for (const s of data.statuses) {
+      filter.appendChild(el("option", { value: s }, s));
+    }
+    const sortBy = document.getElementById("sort-by");
+    const listEl = document.getElementById("leads-list");
+
+    function rerender() {
+      const filtered = applyFiltersAndSort(data.leads, filter.value, sortBy.value);
+      listEl.innerHTML = "";
+      if (!filtered.length) {
+        listEl.appendChild(
+          el("div", { class: "db-card db-empty" },
+            el("h3", {}, "No leads to show"),
+            el("p", {}, data.leads.length
+              ? "No leads match the current filter."
+              : "When buyers submit inquiries, they'll appear here."),
+          ),
+        );
+        return;
+      }
+      for (const lead of filtered) {
+        listEl.appendChild(leadCard(lead, data.statuses));
+      }
+    }
+    filter.addEventListener("change", rerender);
+    sortBy.addEventListener("change", rerender);
+    rerender();
+  }
+
+  async function loadLeads() {
+    render("tpl-leads");
+    const list = document.getElementById("leads-list");
+    const slugFilter = urlSlugParam();
+    try {
+      const me = await fetchJSON("/api/dashboard/me");
+      bindHeader(me.email);
+      const url = "/api/dashboard/leads" + (slugFilter ? "?slug=" + encodeURIComponent(slugFilter) : "");
+      const data = await fetchJSON(url);
+      renderLeads(data, slugFilter);
+    } catch (err) {
+      if (err.status === 401) {
+        showLogin();
+        return;
+      }
+      list.innerHTML = "";
+      list.appendChild(el("div", { class: "db-error" }, err.message || "Couldn't load leads."));
+    }
+  }
+
+  loadLeads();
+})();
+</script>
+
+</body>
+</html>

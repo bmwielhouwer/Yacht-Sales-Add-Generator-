@@ -9,7 +9,8 @@
     "api/save-listing.js": { "maxDuration": 10 },
     "api/inquiry.js": { "maxDuration": 15 },
     "api/l/[slug].js": { "maxDuration": 10 },
-    "api/stripe/webhook.js": { "maxDuration": 15 }
+    "api/stripe/webhook.js": { "maxDuration": 15 },
+    "api/dashboard/[action].js": { "maxDuration": 15 }
   },
   "rewrites": [
     { "source": "/l/:slug", "destination": "/api/l/:slug" }

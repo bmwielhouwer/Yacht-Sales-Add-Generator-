@@ -1,5 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { getRedis } from "./_codes.js";
+import {
+  addListingToBrokerIndex,
+  addLeadToBrokerIndex,
+  normalizeEmail,
+} from "./_dashboard.js";
 
 const SLUG_TTL_RESERVE = 60 * 30;
 
@@ -79,6 +84,14 @@ export async function saveListing(slug, record) {
   console.log("[listings.saveListing] writing", { key, slug, bytes });
   await redis.set(key, record);
   console.log("[listings.saveListing] write complete", { key });
+
+  const brokerEmail = normalizeEmail(
+    record?.broker?.email || record?.boatData?.broker?.email || "",
+  );
+  if (brokerEmail) {
+    const createdMs = Date.parse(record?.created_at ?? "") || Date.now();
+    await addListingToBrokerIndex(brokerEmail, slug, createdMs);
+  }
 }
 
 export async function loadListing(slug) {
@@ -120,7 +133,7 @@ export async function getViewCount(slug) {
   return Number(v) || 0;
 }
 
-export async function saveLead(slug, lead) {
+export async function saveLead(slug, lead, brokerEmail = null) {
   const redis = getRedis();
   if (!redis) {
     throw new Error(
@@ -129,7 +142,11 @@ export async function saveLead(slug, lead) {
   }
   const ts = new Date().toISOString();
   const key = `lead:${slug}:${ts}-${randomSuffix(6)}`;
-  await redis.set(key, { ...lead, slug, created_at: ts });
+  await redis.set(key, { ...lead, slug, created_at: ts, status: "New", notes: "" });
+  const email = normalizeEmail(brokerEmail);
+  if (email) {
+    await addLeadToBrokerIndex(email, key, Date.parse(ts) || Date.now());
+  }
   return key;
 }
 
