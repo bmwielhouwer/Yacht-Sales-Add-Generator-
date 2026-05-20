@@ -71,7 +71,7 @@ export async function saveListing(slug, record) {
   const redis = getRedis();
   if (!redis) {
     throw new Error(
-      "Redis client unavailable — set UPSTASH_REDIS_REST_URL/TOKEN (or KV_REST_API_URL/TOKEN) for this environment in Vercel and redeploy",
+      "Redis client unavailable — set UPSTASH_REDIS_REST_KV_REST_API_URL and UPSTASH_REDIS_REST_KV_REST_API_TOKEN for this environment in Vercel and redeploy",
     );
   }
   const key = `listing:${slug}`;
@@ -124,7 +124,7 @@ export async function saveLead(slug, lead) {
   const redis = getRedis();
   if (!redis) {
     throw new Error(
-      "Redis client unavailable — set UPSTASH_REDIS_REST_URL/TOKEN (or KV_REST_API_URL/TOKEN) for this environment in Vercel and redeploy",
+      "Redis client unavailable — set UPSTASH_REDIS_REST_KV_REST_API_URL and UPSTASH_REDIS_REST_KV_REST_API_TOKEN for this environment in Vercel and redeploy",
     );
   }
   const ts = new Date().toISOString();
