@@ -1,6 +1,6 @@
 import { del } from "@vercel/blob";
-import { getRedis, lookupCode } from "../_codes.js";
-import { isValidAccessCode } from "../_lib.js";
+import { getRedis, lookupCode, recordLogin } from "../_codes.js";
+import { checkAccessCode } from "../_lib.js";
 import {
   loadListing,
   listingUrl,
@@ -71,18 +71,35 @@ async function loginHandler(req, res) {
     return res.status(400).json({ error: "Enter your access code." });
   }
 
-  const valid = await isValidAccessCode(code);
-  if (!valid) {
+  const PRICING_URL = "https://marine.compass-line-ventures.com/pricing";
+  const result = await checkAccessCode(code);
+  if (!result.ok) {
+    if (result.reason === "revoked") {
+      return res.status(401).json({ error: "This code has been revoked. Contact support." });
+    }
+    if (result.reason === "expired") {
+      return res.status(401).json({
+        error: `Your trial has ended. Choose a plan at ${PRICING_URL}`,
+      });
+    }
     return res.status(401).json({ error: "Invalid access code." });
   }
 
-  const record = await lookupCode(code);
+  const record = result.record ?? (await lookupCode(code));
   const codeEmail = normalizeEmail(record?.customer_email);
   if (codeEmail && codeEmail !== email) {
     console.warn("[dashboard.login] email mismatch", { entered: email, onCode: codeEmail });
     return res.status(401).json({
       error: "Email doesn't match the one on this access code.",
     });
+  }
+
+  if (record) {
+    try {
+      await recordLogin(code, { brokerEmail: email });
+    } catch (err) {
+      console.warn("[dashboard.login] recordLogin failed", err?.message);
+    }
   }
 
   const tier = record?.tier ? String(record.tier).toUpperCase() : null;

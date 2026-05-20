@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin — Compass Line Marine</title>
+<meta name="robots" content="noindex,nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/admin.css" />
+</head>
+<body>
+
+<div id="ad-app">
+  <div class="ad-loading">Loading…</div>
+</div>
+
+<template id="tpl-login">
+  <header class="ad-header">
+    <div class="ad-header-inner">
+      <div class="ad-brand"><a href="/">Compass Line Marine</a><small>Admin portal</small></div>
+    </div>
+  </header>
+  <main class="ad-login">
+    <div class="ad-card">
+      <h1>Admin sign in</h1>
+      <p class="sub">Enter the admin password to manage access codes.</p>
+      <form id="login-form" novalidate>
+        <label class="ad-field">
+          <span>Password</span>
+          <input name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <div class="ad-form-error" id="login-error"></div>
+        <button type="submit" class="ad-submit" id="login-submit">Sign in</button>
+      </form>
+    </div>
+  </main>
+</template>
+
+<template id="tpl-dashboard">
+  <header class="ad-header">
+    <div class="ad-header-inner">
+      <div class="ad-brand"><a href="/">Compass Line Marine</a><small>Admin portal</small></div>
+      <div class="ad-account">
+        <button type="button" class="ad-logout" data-logout>Sign out</button>
+      </div>
+    </div>
+  </header>
+  <main class="ad-main">
+
+    <section class="ad-section">
+      <h1 class="ad-page-title">Generate new code</h1>
+      <div class="ad-card" id="generate-card">
+        <div id="generate-form-wrap">
+          <form id="generate-form" class="ad-grid" novalidate>
+            <label class="ad-field">
+              <span>Shop name</span>
+              <input name="shopName" type="text" placeholder="S&amp;J Yachts" autocomplete="off" />
+            </label>
+            <label class="ad-field">
+              <span>Broker name <em>(optional)</em></span>
+              <input name="brokerName" type="text" placeholder="Jane Smith" autocomplete="off" />
+            </label>
+            <label class="ad-field">
+              <span>Tier</span>
+              <select name="tier" required>
+                <option value="LISTING">Per-listing</option>
+                <option value="STUDIO" selected>Studio</option>
+                <option value="SUITE">Suite</option>
+              </select>
+            </label>
+            <label class="ad-field">
+              <span>Trial length</span>
+              <select name="trial" id="trial-select">
+                <option value="0">No expiration</option>
+                <option value="7" selected>7 days</option>
+                <option value="14">14 days</option>
+                <option value="30">30 days</option>
+                <option value="custom">Custom date…</option>
+              </select>
+            </label>
+            <label class="ad-field" id="custom-date-wrap" hidden>
+              <span>Expires on</span>
+              <input name="customDate" type="date" />
+            </label>
+            <div class="ad-form-error" id="generate-error"></div>
+            <div class="ad-actions">
+              <button type="submit" class="ad-submit" id="generate-submit">Generate code</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="generate-result" class="ad-result" hidden>
+          <div class="ad-result-code" id="result-code"></div>
+          <div class="ad-result-meta" id="result-meta"></div>
+          <div class="ad-result-url">
+            <input type="text" readonly id="result-url" />
+            <button type="button" class="ad-copy" data-copy-target="result-url">Copy</button>
+          </div>
+          <div class="ad-result-qr">
+            <img id="result-qr" alt="QR code for share URL" />
+          </div>
+          <div class="ad-actions ad-actions-row">
+            <button type="button" class="ad-copy" data-copy-target="result-code">Copy code</button>
+            <button type="button" class="ad-submit" id="generate-another">Generate another</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ad-section">
+      <h2 class="ad-page-title">All codes</h2>
+      <div class="ad-card">
+        <div class="ad-toolbar">
+          <input type="search" id="search" placeholder="Search by code, shop, or broker…" />
+          <div class="ad-filters" role="tablist">
+            <button type="button" class="ad-filter is-active" data-filter="all">All</button>
+            <button type="button" class="ad-filter" data-filter="active">Active</button>
+            <button type="button" class="ad-filter" data-filter="expired">Expired</button>
+            <button type="button" class="ad-filter" data-filter="revoked">Revoked</button>
+          </div>
+          <button type="button" class="ad-ghost" id="refresh">Refresh</button>
+        </div>
+        <div id="codes-table-wrap">
+          <div class="ad-loading">Loading codes…</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="ad-modal" id="extend-modal" role="dialog" aria-modal="true" hidden>
+    <div class="ad-modal-backdrop" data-close></div>
+    <div class="ad-modal-card">
+      <h2>Extend expiration</h2>
+      <p class="ad-modal-body">Set a new expiration date for <strong id="extend-code-label"></strong>, or clear to remove expiration.</p>
+      <label class="ad-field">
+        <span>New expiration</span>
+        <input type="date" id="extend-date" />
+      </label>
+      <div class="ad-form-error" id="extend-error"></div>
+      <div class="ad-modal-actions">
+        <button type="button" class="ad-ghost" data-close>Cancel</button>
+        <button type="button" class="ad-submit" id="extend-confirm">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ad-modal" id="revoke-modal" role="dialog" aria-modal="true" hidden>
+    <div class="ad-modal-backdrop" data-close></div>
+    <div class="ad-modal-card">
+      <h2>Revoke this code?</h2>
+      <p class="ad-modal-body">This will immediately deny access to <strong id="revoke-code-label"></strong>. The user will see "This code has been revoked." This can't be undone.</p>
+      <div class="ad-form-error" id="revoke-error"></div>
+      <div class="ad-modal-actions">
+        <button type="button" class="ad-ghost" data-close>Cancel</button>
+        <button type="button" class="ad-submit ad-danger" id="revoke-confirm">Revoke</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ad-toast" id="toast" hidden></div>
+</template>
+
+<script type="module" src="/admin.js"></script>
+</body>
+</html>

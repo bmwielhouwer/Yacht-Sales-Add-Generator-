@@ -246,6 +246,12 @@
       let dashSession = null;
       const DEFAULT_GATE_SUB = "Enter your access code to begin.";
       const FIRST_TIME_GATE_SUB = "Sign in to generate your first listing.";
+      const GATE_ERROR_MESSAGES = {
+        invalid: "Invalid share link — that code wasn't recognized.",
+        not_found: "Invalid share link — that code wasn't recognized.",
+        revoked: "This code has been revoked. Contact support.",
+        expired: "Your trial has ended. See pricing for a plan.",
+      };
 
       function getAccessCode() {
         return localStorage.getItem(ACCESS_KEY);
@@ -384,7 +390,23 @@
         if (e.key === "Escape" && !gate.hidden) closeGate();
       });
 
+      function consumeGateErrorParam() {
+        try {
+          const params = new URLSearchParams(location.search);
+          const reason = params.get("gate_error");
+          if (!reason) return null;
+          params.delete("gate_error");
+          const search = params.toString();
+          const newUrl = location.pathname + (search ? `?${search}` : "") + location.hash;
+          history.replaceState({}, "", newUrl);
+          return GATE_ERROR_MESSAGES[reason] || "That share link couldn't be used.";
+        } catch {
+          return null;
+        }
+      }
+
       (async () => {
+        const gateErrorMessage = consumeGateErrorParam();
         const me = await tryDashboardSession();
         if (me?.email) {
           dashSession = me;
@@ -394,10 +416,17 @@
           closeGate();
           return;
         }
-        if (getAccessCode()) {
+        if (getAccessCode() && !gateErrorMessage) {
           applyAuthedChrome({ email: "", tier: getStoredTier() });
         } else {
           applyUnauthedChrome();
+          if (gateErrorMessage) {
+            try { localStorage.removeItem(ACCESS_KEY); } catch {}
+            setStoredTier(null);
+            openGate();
+            gateError.textContent = gateErrorMessage;
+            gateError.classList.add("show");
+          }
         }
       })();
 

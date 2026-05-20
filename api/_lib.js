@@ -1,4 +1,4 @@
-import { isCodeActive } from "./_codes.js";
+import { checkCode } from "./_codes.js";
 import { readSession } from "./_dashboard.js";
 
 function envOverrides() {
@@ -12,20 +12,32 @@ function envOverrides() {
   );
 }
 
-export async function isValidAccessCode(code) {
+function envHas(code) {
   if (typeof code !== "string") return false;
-  const normalized = code.trim().toUpperCase();
-  if (!normalized) return false;
-
   const overrides = envOverrides();
-  if (overrides?.has(normalized)) return true;
+  if (!overrides) return false;
+  return overrides.has(code.trim().toUpperCase());
+}
 
+// Returns { ok, reason, record } so callers can show specific messages
+// (revoked/expired). Preserves the env-var fallback for legacy test codes
+// like CLM-LISTING-12291993 that have no Redis record.
+export async function checkAccessCode(code) {
+  if (typeof code !== "string" || !code.trim()) {
+    return { ok: false, reason: "not_found", record: null };
+  }
   try {
-    return await isCodeActive(normalized);
+    return await checkCode(code, { envOk: envHas(code) });
   } catch (err) {
     console.error("Redis lookup failed:", err);
-    return false;
+    if (envHas(code)) return { ok: true, reason: "ok", record: null };
+    return { ok: false, reason: "not_found", record: null };
   }
+}
+
+export async function isValidAccessCode(code) {
+  const result = await checkAccessCode(code);
+  return result.ok;
 }
 
 export function withGuard(handler, { requireCode = true } = {}) {
