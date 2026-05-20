@@ -76,6 +76,21 @@
     </div>
   </main>
   <footer class="db-footer">Compass Line Marine · Built for serious yacht brokers</footer>
+
+  <div class="db-modal" id="delete-lead-modal" role="dialog" aria-modal="true" aria-labelledby="delete-lead-modal-title" hidden>
+    <div class="db-modal-backdrop" data-close></div>
+    <div class="db-modal-card">
+      <h2 id="delete-lead-modal-title">Delete this lead?</h2>
+      <p class="db-modal-body">This can't be undone.</p>
+      <div class="db-modal-error" id="delete-lead-modal-error" hidden></div>
+      <div class="db-modal-actions">
+        <button type="button" class="db-btn" data-close>Cancel</button>
+        <button type="button" class="db-btn db-btn-danger" id="delete-lead-confirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="db-toast" id="db-toast" hidden></div>
 </template>
 
 <script>
@@ -257,10 +272,17 @@
     }
     const statusBadgeEl = statusBadge(lead.status);
 
+    const deleteBtn = el("button", {
+      type: "button",
+      class: "db-delete-btn db-delete-btn-lead",
+      "aria-label": "Delete lead",
+    }, "Delete");
+
     const statusRow = el("div", { class: "row" },
       el("label", { for: "" }, "Status"),
       statusSelect,
       statusBadgeEl,
+      deleteBtn,
     );
 
     const notesArea = el("textarea", {
@@ -326,7 +348,79 @@
     if (listingRow) card.appendChild(listingRow);
     if (msg) card.appendChild(msg);
     card.appendChild(controls);
+
+    deleteBtn.addEventListener("click", () => openDeleteLeadModal(lead, card));
+
     return card;
+  }
+
+  let pendingLeadDelete = null;
+  function openDeleteLeadModal(lead, cardEl) {
+    pendingLeadDelete = { lead, cardEl };
+    const modal = document.getElementById("delete-lead-modal");
+    const errEl = document.getElementById("delete-lead-modal-error");
+    const confirm = document.getElementById("delete-lead-confirm");
+    errEl.hidden = true;
+    errEl.textContent = "";
+    confirm.disabled = false;
+    confirm.textContent = "Delete";
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    setTimeout(() => confirm.focus(), 30);
+  }
+  function closeDeleteLeadModal() {
+    const modal = document.getElementById("delete-lead-modal");
+    if (!modal) return;
+    modal.hidden = true;
+    document.body.style.overflow = "";
+    pendingLeadDelete = null;
+  }
+  async function performLeadDelete() {
+    if (!pendingLeadDelete) return;
+    const { lead, cardEl } = pendingLeadDelete;
+    const errEl = document.getElementById("delete-lead-modal-error");
+    const confirm = document.getElementById("delete-lead-confirm");
+    errEl.hidden = true;
+    confirm.disabled = true;
+    confirm.textContent = "Deleting…";
+    try {
+      await fetchJSON("/api/dashboard/delete-lead", {
+        method: "POST",
+        body: JSON.stringify({ key: lead.key }),
+      });
+      closeDeleteLeadModal();
+      cardEl.classList.add("db-lead-removing");
+      setTimeout(() => cardEl.remove(), 260);
+      showToast("Lead deleted.");
+    } catch (err) {
+      errEl.textContent = err.message || "Couldn't delete the lead.";
+      errEl.hidden = false;
+      confirm.disabled = false;
+      confirm.textContent = "Delete";
+    }
+  }
+  let toastTimer = null;
+  function showToast(text) {
+    const t = document.getElementById("db-toast");
+    if (!t) return;
+    t.textContent = text;
+    t.hidden = false;
+    requestAnimationFrame(() => t.classList.add("show"));
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      t.classList.remove("show");
+      setTimeout(() => { t.hidden = true; }, 220);
+    }, 2400);
+  }
+  function bindDeleteLeadModalHandlers() {
+    const modal = document.getElementById("delete-lead-modal");
+    if (!modal || modal.dataset.bound === "1") return;
+    modal.dataset.bound = "1";
+    modal.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", closeDeleteLeadModal));
+    document.getElementById("delete-lead-confirm").addEventListener("click", performLeadDelete);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !modal.hidden) closeDeleteLeadModal();
+    });
   }
 
   function applyFiltersAndSort(leads, status, sort) {
@@ -391,6 +485,7 @@
     filter.addEventListener("change", rerender);
     sortBy.addEventListener("change", rerender);
     rerender();
+    bindDeleteLeadModalHandlers();
   }
 
   async function loadLeads() {

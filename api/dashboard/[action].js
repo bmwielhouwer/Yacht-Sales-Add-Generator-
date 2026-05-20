@@ -373,6 +373,62 @@ async function deleteListingHandler(req, res) {
   return res.status(200).json({ success: true, deletedLeadCount, deletedPhotoCount });
 }
 
+async function deleteLeadHandler(req, res) {
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "POST only" });
+  }
+  const session = await requireSession(req, res);
+  if (!session) return;
+
+  const redis = getRedis();
+  if (!redis) {
+    return res.status(500).json({ error: "Redis client unavailable on this deployment." });
+  }
+
+  const key = String(req.body?.key ?? "").trim();
+  const m = key.match(/^lead:([a-z0-9-]+):.+$/);
+  if (!m) {
+    return res.status(400).json({ error: "Invalid lead key." });
+  }
+  const slug = m[1];
+
+  const record = await loadListing(slug);
+  if (!record) {
+    return res.status(404).json({ error: "Listing not found." });
+  }
+  const brokerEmail = normalizeEmail(
+    record?.broker?.email || record?.boatData?.broker?.email || "",
+  );
+  if (!brokerEmail || brokerEmail !== session.email) {
+    console.warn("[dashboard.delete-lead] auth mismatch", {
+      sessionEmail: session.email,
+      brokerEmail,
+      key,
+    });
+    return res.status(403).json({ error: "Not your lead." });
+  }
+
+  try {
+    await redis.del(key);
+  } catch (err) {
+    console.error("[dashboard.delete-lead] del failed", { key, err: err?.message });
+    return res.status(500).json({ error: "Failed to delete lead." });
+  }
+  try {
+    await redis.zrem(`leads:by-broker:${session.email}`, key);
+  } catch (err) {
+    console.error("[dashboard.delete-lead] zrem failed", {
+      email: session.email,
+      key,
+      err: err?.message,
+    });
+  }
+
+  console.log("[dashboard.delete-lead] complete", { key, email: session.email });
+  return res.status(200).json({ success: true });
+}
+
 const ACTIONS = {
   login: loginHandler,
   logout: logoutHandler,
@@ -380,6 +436,7 @@ const ACTIONS = {
   listings: listingsHandler,
   leads: leadsHandler,
   "delete-listing": deleteListingHandler,
+  "delete-lead": deleteLeadHandler,
 };
 
 export default async function handler(req, res) {
