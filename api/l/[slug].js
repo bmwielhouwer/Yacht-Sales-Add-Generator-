@@ -279,15 +279,24 @@ ${hero ? `<meta property="og:image" content="${escAttr(hero)}" />` : ""}
 
 export default async function handler(req, res) {
   const slug = String(req.query.slug ?? "").trim();
+  console.log("[l/slug] incoming", {
+    slug,
+    rawQuerySlug: req.query.slug,
+    url: req.url,
+    host: req.headers.host,
+  });
   if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+    console.warn("[l/slug] invalid slug, 404", JSON.stringify(slug));
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     return res.status(404).send("<!doctype html><meta charset=utf-8><title>Not found</title><p>Listing not found.</p>");
   }
   const record = await loadListing(slug);
   if (!record) {
+    console.warn("[l/slug] no record for slug, 404", { slug, key: `listing:${slug}` });
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     return res.status(404).send("<!doctype html><meta charset=utf-8><title>Not found</title><p>Listing not found.</p>");
   }
+  console.log("[l/slug] hit", { slug, key: `listing:${slug}` });
 
   bumpViewCount(slug).catch(() => {});
 
