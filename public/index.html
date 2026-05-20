@@ -529,6 +529,7 @@
         const div = document.createElement("div");
         div.className = "photo-thumb";
         div.dataset.id = entry.id;
+        div.title = entry.originalName;
         div.innerHTML = `<img alt="" src="${entry.dataUrl}" /><button type="button" class="remove" aria-label="Remove">×</button>`;
         div.querySelector(".remove").addEventListener("click", () => {
           const idx = photos.findIndex((p) => p.id === entry.id);
@@ -840,8 +841,9 @@
       function buildCustomizePanel(defaults) {
         const thumbs = photos.map((p, i) => {
           const idx = i + 1;
+          const name = p.originalName ?? `Photo ${idx}`;
           return `
-            <button type="button" class="flier-thumb" data-idx="${idx}" aria-label="Use photo ${idx} in flier">
+            <button type="button" class="flier-thumb" data-idx="${idx}" title="${escape(name)}" aria-label="Use ${escape(name)} in flier">
               <img src="${p.dataUrl}" alt="" />
               <span class="flier-thumb-badge"></span>
             </button>
