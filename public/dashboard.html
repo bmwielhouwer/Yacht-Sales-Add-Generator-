@@ -60,6 +60,12 @@
   <main class="db-main">
     <h1 class="db-page-title">Your listings</h1>
     <p class="db-page-sub">Each listing here can collect inquiries from buyers.</p>
+    <div class="db-controls" id="listings-controls" hidden>
+      <label class="db-toggle">
+        <input type="checkbox" id="show-withdrawn" />
+        <span>Show withdrawn</span>
+      </label>
+    </div>
     <div id="listings-list">
       <div class="db-loading">Loading listings…</div>
     </div>
@@ -76,6 +82,34 @@
         <button type="button" class="db-btn" data-close>Cancel</button>
         <button type="button" class="db-btn db-btn-danger" id="delete-confirm">Delete</button>
       </div>
+    </div>
+  </div>
+
+  <div class="db-modal" id="edit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" hidden>
+    <div class="db-modal-backdrop" data-close></div>
+    <div class="db-modal-card">
+      <h2 id="edit-modal-title">Edit listing</h2>
+      <p class="db-modal-body" id="edit-modal-sub">Update price or status.</p>
+      <form id="edit-form" novalidate>
+        <label class="db-field">
+          <span>Asking price (USD)</span>
+          <input type="text" inputmode="numeric" id="edit-price" autocomplete="off" placeholder="189,000" />
+        </label>
+        <label class="db-field">
+          <span>Status</span>
+          <select id="edit-status" class="db-select">
+            <option value="active">Active</option>
+            <option value="sale_pending">Sale Pending</option>
+            <option value="sold">Sold</option>
+            <option value="withdrawn">Withdrawn</option>
+          </select>
+        </label>
+        <div class="db-modal-error" id="edit-modal-error" hidden></div>
+        <div class="db-modal-actions">
+          <button type="button" class="db-btn" data-close>Cancel</button>
+          <button type="submit" class="db-btn db-btn-primary" id="edit-save">Save</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -174,51 +208,196 @@
     setTimeout(() => form.querySelector("input[name=email]")?.focus(), 30);
   }
 
-  function renderListings(data) {
-    render("tpl-listings");
-    bindHeader(data.email);
+  const STATUS_LABEL = {
+    active: "Active",
+    sale_pending: "Sale Pending",
+    sold: "Sold",
+    withdrawn: "Withdrawn",
+  };
+
+  let allListings = [];
+  let showWithdrawn = false;
+
+  function buildRow(item) {
+    const status = item.status || "active";
+    const meta = el("div", { class: "db-listing-meta" });
+    if (item.price) meta.appendChild(el("span", { class: "price" }, item.price));
+    meta.appendChild(el("span", {}, "Created " + fmtDate(item.createdAt)));
+    const leadSpan = el("span", { class: "lead-count" + (item.leadCount ? " has-leads" : "") });
+    const strong = el("strong", {}, String(item.leadCount));
+    leadSpan.appendChild(strong);
+    leadSpan.appendChild(document.createTextNode(" " + (item.leadCount === 1 ? "lead" : "leads")));
+    meta.appendChild(leadSpan);
+
+    const nameRow = el("div", { class: "db-listing-name-row" },
+      el("h2", { class: "db-listing-name" }, item.boatName),
+    );
+    if (status !== "active") {
+      nameRow.appendChild(
+        el("span", { class: "db-status-badge db-status-" + status.replace("_", "-") }, STATUS_LABEL[status] || status),
+      );
+    }
+
+    const actions = el("div", { class: "db-listing-actions" },
+      el("a", { class: "db-btn", href: item.url, target: "_blank", rel: "noopener" }, "View public page"),
+      el("button", { type: "button", class: "db-btn" }, "Edit"),
+      el("a", { class: "db-btn db-btn-primary", href: "/dashboard/leads?slug=" + encodeURIComponent(item.slug) }, "See leads"),
+    );
+
+    const row = el("div", { class: "db-listing-row db-listing-status-" + status.replace("_", "-") },
+      el("div", { class: "db-listing-main" }, nameRow, meta),
+      actions,
+    );
+    row.dataset.slug = item.slug;
+
+    const editBtn = actions.querySelector("button");
+    editBtn.addEventListener("click", () => openEditModal(item, row));
+
+    const deleteBtn = el("button", { type: "button", class: "db-delete-btn", "aria-label": "Delete listing" }, "Delete");
+    deleteBtn.addEventListener("click", () => openDeleteModal(item, row));
+    row.appendChild(deleteBtn);
+
+    return row;
+  }
+
+  function paintListings() {
     const list = document.getElementById("listings-list");
     list.innerHTML = "";
-    if (!data.listings.length) {
+    const visible = allListings.filter((x) => showWithdrawn || (x.status || "active") !== "withdrawn");
+    if (!visible.length) {
+      const hasOnlyWithdrawn = allListings.length > 0 && !showWithdrawn;
       list.appendChild(
         el("div", { class: "db-card db-empty" },
-          el("h3", {}, "No listings yet"),
-          el("p", {}, "Generate your first listing in the main app — it'll show up here."),
-          el("a", { class: "db-btn db-btn-primary", href: "/" }, "Open the generator"),
+          el("h3", {}, hasOnlyWithdrawn ? "No active listings" : "No listings yet"),
+          el("p", {}, hasOnlyWithdrawn
+            ? "All your listings are withdrawn. Toggle 'Show withdrawn' above to see them."
+            : "Generate your first listing in the main app — it'll show up here."),
+          hasOnlyWithdrawn
+            ? null
+            : el("a", { class: "db-btn db-btn-primary", href: "/" }, "Open the generator"),
         ),
       );
       return;
     }
-    for (const item of data.listings) {
-      const meta = el("div", { class: "db-listing-meta" });
-      if (item.price) meta.appendChild(el("span", { class: "price" }, item.price));
-      meta.appendChild(el("span", {}, "Created " + fmtDate(item.createdAt)));
-      const leadSpan = el("span", { class: "lead-count" + (item.leadCount ? " has-leads" : "") });
-      const strong = el("strong", {}, String(item.leadCount));
-      leadSpan.appendChild(strong);
-      leadSpan.appendChild(document.createTextNode(" " + (item.leadCount === 1 ? "lead" : "leads")));
-      meta.appendChild(leadSpan);
+    for (const item of visible) list.appendChild(buildRow(item));
+  }
 
-      const actions = el("div", { class: "db-listing-actions" },
-        el("a", { class: "db-btn", href: item.url, target: "_blank", rel: "noopener" }, "View public page"),
-        el("a", { class: "db-btn db-btn-primary", href: "/dashboard/leads?slug=" + encodeURIComponent(item.slug) }, "See leads"),
-      );
-
-      const row = el("div", { class: "db-listing-row" },
-        el("div", { class: "db-listing-main" },
-          el("h2", { class: "db-listing-name" }, item.boatName),
-          meta,
-        ),
-        actions,
-      );
-
-      const deleteBtn = el("button", { type: "button", class: "db-delete-btn", "aria-label": "Delete listing" }, "Delete");
-      deleteBtn.addEventListener("click", () => openDeleteModal(item, row));
-      row.appendChild(deleteBtn);
-
-      list.appendChild(row);
+  function renderListings(data) {
+    render("tpl-listings");
+    bindHeader(data.email);
+    allListings = Array.isArray(data.listings) ? data.listings.slice() : [];
+    const controls = document.getElementById("listings-controls");
+    if (controls) {
+      controls.hidden = allListings.length === 0;
+      const toggle = document.getElementById("show-withdrawn");
+      toggle.checked = showWithdrawn;
+      toggle.addEventListener("change", () => {
+        showWithdrawn = toggle.checked;
+        paintListings();
+      });
     }
+    paintListings();
     bindDeleteModalHandlers();
+    bindEditModalHandlers();
+  }
+
+  function refreshRow(item) {
+    const list = document.getElementById("listings-list");
+    if (!list) return;
+    const old = list.querySelector('.db-listing-row[data-slug="' + cssEscape(item.slug) + '"]');
+    if (!old) return;
+    if (!showWithdrawn && item.status === "withdrawn") {
+      old.remove();
+      if (!list.querySelector(".db-listing-row")) paintListings();
+      return;
+    }
+    const next = buildRow(item);
+    old.replaceWith(next);
+  }
+  function cssEscape(s) {
+    return String(s).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+  }
+
+  let pendingEdit = null;
+  function openEditModal(item, rowEl) {
+    pendingEdit = { item, rowEl };
+    const modal = document.getElementById("edit-modal");
+    const errEl = document.getElementById("edit-modal-error");
+    const priceInput = document.getElementById("edit-price");
+    const statusSel = document.getElementById("edit-status");
+    const saveBtn = document.getElementById("edit-save");
+    errEl.hidden = true;
+    errEl.textContent = "";
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save";
+    priceInput.value = item.priceUsd != null ? Number(item.priceUsd).toLocaleString("en-US") : "";
+    statusSel.value = item.status || "active";
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    setTimeout(() => priceInput.focus(), 30);
+  }
+  function closeEditModal() {
+    const modal = document.getElementById("edit-modal");
+    if (!modal) return;
+    modal.hidden = true;
+    document.body.style.overflow = "";
+    pendingEdit = null;
+  }
+  async function performEdit(e) {
+    e.preventDefault();
+    if (!pendingEdit) return;
+    const { item } = pendingEdit;
+    const errEl = document.getElementById("edit-modal-error");
+    const saveBtn = document.getElementById("edit-save");
+    const priceInput = document.getElementById("edit-price");
+    const statusSel = document.getElementById("edit-status");
+    errEl.hidden = true;
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving…";
+    const rawDigits = String(priceInput.value || "").replace(/[^\d]/g, "");
+    const payload = {
+      slug: item.slug,
+      status: statusSel.value,
+      price: rawDigits === "" ? null : Number(rawDigits),
+    };
+    try {
+      const resp = await fetchJSON("/api/dashboard/update-listing", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      const updated = {
+        ...item,
+        status: resp.status,
+        price: resp.price,
+        priceUsd: resp.priceUsd,
+        updatedAt: resp.updatedAt,
+      };
+      const idx = allListings.findIndex((x) => x.slug === item.slug);
+      if (idx >= 0) allListings[idx] = updated;
+      closeEditModal();
+      refreshRow(updated);
+      showToast("Listing updated.");
+    } catch (err) {
+      errEl.textContent = err.message || "Couldn't save changes.";
+      errEl.hidden = false;
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save";
+    }
+  }
+  function bindEditModalHandlers() {
+    const modal = document.getElementById("edit-modal");
+    if (!modal || modal.dataset.bound === "1") return;
+    modal.dataset.bound = "1";
+    modal.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", closeEditModal));
+    document.getElementById("edit-form").addEventListener("submit", performEdit);
+    const priceInput = document.getElementById("edit-price");
+    priceInput.addEventListener("input", () => {
+      const digits = priceInput.value.replace(/\D/g, "");
+      priceInput.value = digits ? Number(digits).toLocaleString("en-US") : "";
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !modal.hidden) closeEditModal();
+    });
   }
 
   let pendingDelete = null;
@@ -256,6 +435,7 @@
         body: JSON.stringify({ slug: item.slug }),
       });
       closeDeleteModal();
+      allListings = allListings.filter((x) => x.slug !== item.slug);
       rowEl.classList.add("db-listing-row-removing");
       setTimeout(() => {
         rowEl.remove();

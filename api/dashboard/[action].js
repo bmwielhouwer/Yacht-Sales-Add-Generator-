@@ -1,7 +1,12 @@
 import { del } from "@vercel/blob";
 import { getRedis, lookupCode } from "../_codes.js";
 import { isValidAccessCode } from "../_lib.js";
-import { loadListing, listingUrl, getPublicOrigin } from "../_listings.js";
+import {
+  loadListing,
+  listingUrl,
+  getPublicOrigin,
+  LISTING_STATUSES,
+} from "../_listings.js";
 import {
   setSessionCookie,
   clearSessionCookie,
@@ -152,6 +157,8 @@ async function listingsHandler(req, res) {
         slug,
         boatName: boatName(record) || fallbackName(record),
         price: priceText(record),
+        priceUsd: record?.boatData?.asking_price_usd ?? null,
+        status: record.status ?? "active",
         url: record.listingUrl || listingUrl(origin, slug),
         createdAt: record.created_at ?? null,
         updatedAt: record.updated_at ?? null,
@@ -449,6 +456,93 @@ async function deleteLeadHandler(req, res) {
   return res.status(200).json({ success: true });
 }
 
+async function updateListingHandler(req, res) {
+  if (req.method !== "POST" && req.method !== "PATCH") {
+    res.setHeader("Allow", "POST, PATCH");
+    return res.status(405).json({ error: "POST or PATCH only" });
+  }
+  const session = await requireSession(req, res);
+  if (!session) return;
+
+  const redis = getRedis();
+  if (!redis) {
+    return res.status(500).json({ error: "Redis client unavailable on this deployment." });
+  }
+
+  const body = req.body ?? {};
+  const slug = String(body.slug ?? "").trim();
+  if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+    return res.status(400).json({ error: "Valid slug required." });
+  }
+
+  const record = await loadListing(slug);
+  if (!record) {
+    return res.status(404).json({ error: "Listing not found." });
+  }
+
+  const brokerEmail = normalizeEmail(
+    record?.broker?.email || record?.boatData?.broker?.email || "",
+  );
+  if (!brokerEmail || brokerEmail !== session.email) {
+    console.warn("[dashboard.update-listing] auth mismatch", {
+      sessionEmail: session.email,
+      brokerEmail,
+      slug,
+    });
+    return res.status(403).json({ error: "Not your listing." });
+  }
+
+  const next = { ...record };
+  let touched = false;
+
+  if (body.status !== undefined) {
+    const status = String(body.status).trim();
+    if (!LISTING_STATUSES.includes(status)) {
+      return res.status(400).json({ error: "Invalid status." });
+    }
+    next.status = status;
+    touched = true;
+  }
+
+  if (body.price !== undefined) {
+    const raw = body.price;
+    let priceUsd = null;
+    if (raw === null || raw === "") {
+      priceUsd = null;
+    } else {
+      const n = typeof raw === "number" ? raw : Number(String(raw).replace(/[^\d.-]/g, ""));
+      if (!Number.isFinite(n) || n < 0 || n > 100_000_000) {
+        return res.status(400).json({ error: "Invalid price." });
+      }
+      priceUsd = Math.round(n);
+    }
+    next.boatData = { ...(next.boatData ?? {}), asking_price_usd: priceUsd };
+    if (next.flier && typeof next.flier === "object") {
+      next.flier = {
+        ...next.flier,
+        priceText: priceUsd == null ? null : Number(priceUsd).toLocaleString("en-US"),
+      };
+    }
+    touched = true;
+  }
+
+  if (!touched) {
+    return res.status(400).json({ error: "Nothing to update." });
+  }
+
+  next.updated_at = new Date().toISOString();
+  await redis.set(`listing:${slug}`, next);
+
+  return res.status(200).json({
+    ok: true,
+    slug,
+    status: next.status,
+    price: priceText(next),
+    priceUsd: next?.boatData?.asking_price_usd ?? null,
+    updatedAt: next.updated_at,
+  });
+}
+
 const ACTIONS = {
   login: loginHandler,
   logout: logoutHandler,
@@ -457,6 +551,7 @@ const ACTIONS = {
   leads: leadsHandler,
   "delete-listing": deleteListingHandler,
   "delete-lead": deleteLeadHandler,
+  "update-listing": updateListingHandler,
 };
 
 export default async function handler(req, res) {

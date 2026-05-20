@@ -377,6 +377,64 @@ a:hover { text-decoration: underline; }
   box-shadow: 0 0 0 3px rgba(11,37,69,0.10);
 }
 
+.db-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.db-toggle input { margin: 0; }
+
+.db-listing-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.db-status-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.db-status-sale-pending {
+  background: var(--brass);
+  color: #2a1f00;
+}
+.db-status-sold {
+  background: var(--danger);
+  color: #fff;
+}
+.db-status-withdrawn {
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+}
+
+.db-listing-status-sold {
+  opacity: 0.65;
+}
+.db-listing-status-sold .db-listing-meta .price {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.db-listing-status-withdrawn {
+  opacity: 0.55;
+  background: var(--bg);
+}
+
+.db-field .db-select { width: 100%; }
+
 .db-lead {
   background: var(--surface);
   border: 1px solid var(--line);

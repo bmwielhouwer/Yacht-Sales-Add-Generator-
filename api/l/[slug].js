@@ -73,11 +73,43 @@ function orderedPhotoUrls(record) {
   return out;
 }
 
+function renderWithdrawn() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Listing not available — Compass Line Marine</title>
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/listing.css" />
+</head>
+<body>
+<header class="lp-header"><div class="lp-header-inner"><span class="lp-brand">Compass Line Marine</span></div></header>
+<main class="lp-main lp-gone">
+  <h1 class="lp-title">This listing is no longer available</h1>
+  <p class="lp-prose">The broker has withdrawn this listing. Please check back later or contact the broker for other listings.</p>
+</main>
+<footer class="lp-footer">Compass Line Marine · Built for serious yacht brokers</footer>
+</body>
+</html>`;
+}
+
 function renderPage(record, slug) {
   const bd = record.boatData ?? {};
   const broker = record.broker ?? bd.broker ?? {};
   const flier = record.flier ?? {};
   const listing = record.listing ?? {};
+  const status = record.status ?? "active";
+  const isSold = status === "sold";
+  const isSalePending = status === "sale_pending";
+  const statusBanner = isSold
+    ? `<div class="lp-banner lp-banner-sold" role="status"><strong>SOLD</strong><span>This boat has been sold. Listing kept for reference.</span></div>`
+    : isSalePending
+      ? `<div class="lp-banner lp-banner-pending" role="status"><strong>SALE PENDING</strong><span>An offer has been accepted. You can still submit a backup inquiry.</span></div>`
+      : "";
 
   const year = bd.year;
   const make = flier.boatNameYear || bd.make;
@@ -126,8 +158,9 @@ ${hero ? `<meta property="og:image" content="${escAttr(hero)}" />` : ""}
     <span class="lp-brand">Compass Line Marine</span>
   </div>
 </header>
+${statusBanner}
 
-<main class="lp-main">
+<main class="lp-main${isSold ? " lp-main-sold" : ""}">
   <section class="lp-carousel" aria-label="Boat photos">
     <div class="lp-track" id="lp-track">${photoSlides || '<div class="slide slide-empty">No photos yet</div>'}</div>
     ${photoUrls.length > 1 ? `<button class="lp-arrow lp-arrow-prev" aria-label="Previous photo" type="button">‹</button><button class="lp-arrow lp-arrow-next" aria-label="Next photo" type="button">›</button>` : ""}
@@ -136,7 +169,7 @@ ${hero ? `<meta property="og:image" content="${escAttr(hero)}" />` : ""}
   <section class="lp-summary">
     <h1 class="lp-title">${esc(title)}</h1>
     ${price ? `<div class="lp-price">${esc(price)}</div>` : `<div class="lp-price lp-price-tbd">Price on request</div>`}
-    <button class="lp-cta" type="button" id="lp-inquire">Request more info</button>
+    ${isSold ? "" : `<button class="lp-cta" type="button" id="lp-inquire">${isSalePending ? "Submit backup inquiry" : "Request more info"}</button>`}
   </section>
 
   ${longDesc ? `<section class="lp-section"><h2>About this boat</h2><div class="lp-prose">${nl2p(longDesc)}</div></section>` : ""}
@@ -156,9 +189,9 @@ ${hero ? `<meta property="og:image" content="${escAttr(hero)}" />` : ""}
   </section>
 </main>
 
-<button class="lp-cta lp-cta-sticky" type="button" id="lp-inquire-sticky">Request more info</button>
+${isSold ? "" : `<button class="lp-cta lp-cta-sticky" type="button" id="lp-inquire-sticky">${isSalePending ? "Submit backup inquiry" : "Request more info"}</button>`}
 
-<div class="lp-modal" id="lp-modal" role="dialog" aria-modal="true" aria-labelledby="lp-modal-title" hidden>
+${isSold ? "" : `<div class="lp-modal" id="lp-modal" role="dialog" aria-modal="true" aria-labelledby="lp-modal-title" hidden>
   <div class="lp-modal-backdrop" data-close></div>
   <div class="lp-modal-card">
     <button class="lp-modal-close" aria-label="Close" type="button" data-close>×</button>
@@ -191,7 +224,7 @@ ${hero ? `<meta property="og:image" content="${escAttr(hero)}" />` : ""}
     </form>
     <div class="lp-modal-success" id="lp-modal-success" hidden></div>
   </div>
-</div>
+</div>`}
 
 <footer class="lp-footer">
   Compass Line Marine · Built for serious yacht brokers
@@ -213,6 +246,7 @@ ${hero ? `<meta property="og:image" content="${escAttr(hero)}" />` : ""}
   if (next) next.addEventListener("click", () => scrollByOne(1));
 
   const modal = document.getElementById("lp-modal");
+  if (!modal) return;
   const form = document.getElementById("lp-inquiry-form");
   const submitBtn = document.getElementById("lp-submit");
   const errEl = document.getElementById("lp-modal-error");
@@ -296,7 +330,13 @@ export default async function handler(req, res) {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     return res.status(404).send("<!doctype html><meta charset=utf-8><title>Not found</title><p>Listing not found.</p>");
   }
-  console.log("[l/slug] hit", { slug, key: `listing:${slug}` });
+  if (record.status === "withdrawn") {
+    console.log("[l/slug] withdrawn, 404", { slug });
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(404).send(renderWithdrawn());
+  }
+  console.log("[l/slug] hit", { slug, key: `listing:${slug}`, status: record.status });
 
   bumpViewCount(slug).catch(() => {});
 

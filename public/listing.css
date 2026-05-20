@@ -41,6 +41,47 @@ a:hover { text-decoration: underline; }
 
 .lp-main { max-width: 1024px; margin: 0 auto; padding: 24px 20px 120px; }
 
+.lp-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  text-align: left;
+  font-size: 14px;
+  color: #fff;
+  flex-wrap: wrap;
+}
+.lp-banner strong {
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.18);
+}
+.lp-banner span { font-weight: 500; opacity: 0.96; }
+.lp-banner-pending { background: var(--brass); color: #2a1f00; }
+.lp-banner-pending strong { background: rgba(0,0,0,0.10); color: #2a1f00; }
+.lp-banner-sold { background: var(--danger); }
+
+.lp-main-sold .lp-summary { opacity: 0.85; }
+.lp-main-sold .lp-price { text-decoration: line-through; color: var(--muted); }
+
+.lp-gone {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 80px 20px;
+  text-align: center;
+}
+.lp-gone .lp-title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-size: 32px;
+  color: var(--navy);
+  margin: 0 0 16px;
+}
+.lp-gone .lp-prose { color: var(--muted); font-size: 16px; }
+
 .lp-carousel {
   position: relative;
   background: var(--navy);
