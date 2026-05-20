@@ -684,11 +684,34 @@
       let flierState = null;
       let flierDefaults = null;
 
-      function defaultHeroIdx(photoSummary) {
-        if (photos.length === 0) return null;
+      const MAX_FLIER_PHOTOS = 4;
+      const BRANDING_KEY = "clm.flier.branding.v1";
+
+      function loadBranding() {
+        try {
+          const b = JSON.parse(localStorage.getItem(BRANDING_KEY) ?? "{}");
+          return {
+            logoDataUrl: typeof b.logoDataUrl === "string" ? b.logoDataUrl : null,
+            tagline: typeof b.tagline === "string" ? b.tagline : "",
+          };
+        } catch {
+          return { logoDataUrl: null, tagline: "" };
+        }
+      }
+      function saveBranding() {
+        try {
+          localStorage.setItem(BRANDING_KEY, JSON.stringify({
+            logoDataUrl: flierState?.logoDataUrl ?? null,
+            tagline: flierState?.tagline ?? "",
+          }));
+        } catch {}
+      }
+
+      function defaultHeroIdxs(photoSummary) {
+        if (photos.length === 0) return [];
         const hero = (photoSummary?.photos ?? []).find((p) => p.hero_candidate);
-        if (hero && photos[hero.index - 1]) return hero.index;
-        return 1;
+        if (hero && photos[hero.index - 1]) return [hero.index];
+        return [1];
       }
 
       function computeFlierDefaults(boatData, photoSummary) {
@@ -696,45 +719,106 @@
         const priceText = usd != null && !Number.isNaN(Number(usd))
           ? Number(usd).toLocaleString("en-US")
           : "";
+        const branding = loadBranding();
         return {
           banner: "JUST LISTED",
-          heroPhotoIdx: defaultHeroIdx(photoSummary),
+          heroPhotoIdxs: defaultHeroIdxs(photoSummary),
           boatName: buildFlierBoatName(boatData),
           priceText,
           specs: buildFlierSpecs(boatData),
           brokerName: boatData.broker?.name ?? "",
           brokerPhone: boatData.broker?.phone ?? "",
           brokerEmail: boatData.broker?.email ?? "",
+          logoDataUrl: branding.logoDataUrl,
+          tagline: branding.tagline,
         };
       }
 
-      function populateFlierBroker(broker) {
+      function buildBottomLeftContent() {
+        const hasLogo = !!flierState?.logoDataUrl;
+        const hasName = !!flierState?.brokerName;
+        const hasTagline = !!flierState?.tagline;
+        if (!hasLogo && !hasName && !hasTagline) return null;
+
+        const wrap = document.createElement("div");
+        wrap.className = "flier-bottom-left-stack";
+        if (hasLogo) {
+          const img = document.createElement("img");
+          img.className = "flier-logo";
+          img.src = flierState.logoDataUrl;
+          img.alt = "";
+          wrap.appendChild(img);
+        } else if (hasName) {
+          const name = document.createElement("div");
+          name.style.fontWeight = "700";
+          name.textContent = flierState.brokerName;
+          wrap.appendChild(name);
+        }
+        if (hasTagline) {
+          const tag = document.createElement("div");
+          tag.className = "flier-tagline";
+          tag.textContent = flierState.tagline;
+          wrap.appendChild(tag);
+        }
+        return wrap;
+      }
+
+      function populateFlierBottom() {
         const bottom = document.querySelector("#flier-stage .flier-bottom");
         if (!bottom) return;
         bottom.innerHTML = "";
-        const items = [];
-        if (broker?.name) items.push({ value: broker.name, bold: true });
-        if (broker?.phone) items.push({ value: broker.phone });
-        if (broker?.email) items.push({ value: broker.email });
-        if (items.length === 0) return;
-        items.forEach((item, i) => {
-          const cell = document.createElement("div");
-          if (items.length === 3) {
-            cell.style.flex = i === 1 ? "0 0 40%" : "0 0 30%";
+
+        const cells = [];
+        const left = buildBottomLeftContent();
+        if (left) cells.push({ content: left, weight: "30%", align: "left" });
+        if (flierState?.brokerPhone) {
+          const c = document.createElement("div");
+          c.textContent = flierState.brokerPhone;
+          cells.push({ content: c, weight: "40%", align: "center" });
+        }
+        if (flierState?.brokerEmail) {
+          const c = document.createElement("div");
+          c.textContent = flierState.brokerEmail;
+          cells.push({ content: c, weight: "30%", align: "right" });
+        }
+        if (cells.length === 0) return;
+
+        cells.forEach((cell, i) => {
+          const wrap = document.createElement("div");
+          if (cells.length === 3) {
+            wrap.style.flex = `0 0 ${cell.weight}`;
           } else {
-            cell.style.flex = "1";
+            wrap.style.flex = "1";
           }
-          cell.style.textAlign = items.length === 1
+          wrap.style.textAlign = cells.length === 1
             ? "center"
             : i === 0
               ? "left"
-              : i === items.length - 1
+              : i === cells.length - 1
                 ? "right"
                 : "center";
-          if (item.bold) cell.style.fontWeight = "700";
-          cell.textContent = item.value;
-          bottom.appendChild(cell);
+          wrap.appendChild(cell.content);
+          bottom.appendChild(wrap);
         });
+      }
+
+      function renderFlierPhotos() {
+        const stage = document.getElementById("flier-stage");
+        if (!stage) return;
+        const wrap = stage.querySelector(".flier-photo-wrap");
+        const idxs = (flierState.heroPhotoIdxs ?? []).slice(0, MAX_FLIER_PHOTOS);
+        const valid = idxs.filter((i) => photos[i - 1]);
+        const count = Math.max(1, Math.min(MAX_FLIER_PHOTOS, valid.length || 1));
+        wrap.className = `flier-photo-wrap layout-${count}`;
+        wrap.innerHTML = "";
+        for (const idx of valid) {
+          const photo = photos[idx - 1];
+          const img = document.createElement("img");
+          img.className = "flier-photo";
+          img.src = photo.dataUrl;
+          img.alt = "";
+          wrap.appendChild(img);
+        }
       }
 
       function renderFlierFromState() {
@@ -742,8 +826,7 @@
         const stage = document.getElementById("flier-stage");
         if (!stage) return;
 
-        const photo = photos[flierState.heroPhotoIdx - 1];
-        if (photo) stage.querySelector(".flier-photo").src = photo.dataUrl;
+        renderFlierPhotos();
 
         stage.querySelector(".flier-banner").textContent = flierState.banner;
         stage.querySelector(".flier-boat-name").textContent = flierState.boatName;
@@ -751,21 +834,16 @@
           ? "$" + flierState.priceText
           : "Price on Request";
         stage.querySelector(".flier-specs").textContent = flierState.specs;
-        populateFlierBroker({
-          name: flierState.brokerName,
-          phone: flierState.brokerPhone,
-          email: flierState.brokerEmail,
-        });
+        populateFlierBottom();
       }
 
       function buildCustomizePanel(defaults) {
         const thumbs = photos.map((p, i) => {
           const idx = i + 1;
-          const sel = idx === defaults.heroPhotoIdx ? "selected" : "";
           return `
-            <button type="button" class="flier-thumb ${sel}" data-idx="${idx}" aria-label="Use photo ${idx} as hero">
+            <button type="button" class="flier-thumb" data-idx="${idx}" aria-label="Use photo ${idx} in flier">
               <img src="${p.dataUrl}" alt="" />
-              <span class="flier-thumb-badge">Selected</span>
+              <span class="flier-thumb-badge"></span>
             </button>
           `;
         }).join("");
@@ -778,8 +856,9 @@
           <div class="flier-customize">
             <div class="flier-customize-title">Customize this flier</div>
             <div class="flier-customize-section">
-              <label>Photo</label>
+              <label>Photos <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(click to add up to ${MAX_FLIER_PHOTOS} — order shown on each thumb)</span></label>
               <div class="flier-photo-selector" id="flier-photo-selector">${thumbs}</div>
+              <div class="flier-selector-meta" id="flier-selector-meta"></div>
             </div>
             <div class="flier-customize-section">
               <label for="flier-banner-select">Banner</label>
@@ -812,10 +891,63 @@
                 <label for="flier-edit-broker-email">Broker email</label>
                 <input id="flier-edit-broker-email" type="text" autocomplete="off" />
               </div>
+              <div class="flier-customize-full">
+                <label for="flier-edit-tagline">Tagline / company line</label>
+                <input id="flier-edit-tagline" type="text" autocomplete="off" placeholder="Hometown Marine — Since 1987" />
+              </div>
+              <div class="flier-customize-full">
+                <label>Broker logo</label>
+                <div class="flier-branding-row">
+                  <div class="flier-logo-preview" id="flier-logo-preview">
+                    <span class="flier-logo-preview-empty">No logo</span>
+                  </div>
+                  <div class="flier-logo-controls">
+                    <label class="btn btn-outline flier-logo-upload-btn" for="flier-logo-input">Upload logo</label>
+                    <input type="file" class="flier-logo-input" id="flier-logo-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+                    <button type="button" class="flier-logo-clear" id="flier-logo-clear" hidden>Clear logo</button>
+                  </div>
+                </div>
+              </div>
             </div>
             <button type="button" class="flier-reset-link" id="flier-reset">Reset to AI defaults</button>
           </div>
         `;
+      }
+
+      function updatePhotoSelectorUi() {
+        const idxs = flierState.heroPhotoIdxs ?? [];
+        const atMax = idxs.length >= MAX_FLIER_PHOTOS;
+        document.querySelectorAll("#flier-photo-selector .flier-thumb").forEach((t) => {
+          const idx = Number(t.dataset.idx);
+          const pos = idxs.indexOf(idx);
+          const selected = pos >= 0;
+          t.classList.toggle("selected", selected);
+          t.classList.toggle("disabled", !selected && atMax);
+          const badge = t.querySelector(".flier-thumb-badge");
+          if (badge) badge.textContent = selected ? String(pos + 1) : "";
+        });
+        const meta = document.getElementById("flier-selector-meta");
+        if (meta) meta.textContent = `${idxs.length} of max ${MAX_FLIER_PHOTOS} selected`;
+      }
+
+      function updateLogoPreviewUi() {
+        const preview = document.getElementById("flier-logo-preview");
+        const clearBtn = document.getElementById("flier-logo-clear");
+        if (!preview) return;
+        preview.innerHTML = "";
+        if (flierState.logoDataUrl) {
+          const img = document.createElement("img");
+          img.src = flierState.logoDataUrl;
+          img.alt = "";
+          preview.appendChild(img);
+          if (clearBtn) clearBtn.hidden = false;
+        } else {
+          const span = document.createElement("span");
+          span.className = "flier-logo-preview-empty";
+          span.textContent = "No logo";
+          preview.appendChild(span);
+          if (clearBtn) clearBtn.hidden = true;
+        }
       }
 
       function applyStateToInputs() {
@@ -827,9 +959,9 @@
         set("flier-edit-broker-name", flierState.brokerName);
         set("flier-edit-broker-phone", flierState.brokerPhone);
         set("flier-edit-broker-email", flierState.brokerEmail);
-        document.querySelectorAll("#flier-photo-selector .flier-thumb").forEach((t) => {
-          t.classList.toggle("selected", Number(t.dataset.idx) === flierState.heroPhotoIdx);
-        });
+        set("flier-edit-tagline", flierState.tagline);
+        updatePhotoSelectorUi();
+        updateLogoPreviewUi();
       }
 
       function wireCustomizeHandlers() {
@@ -838,10 +970,18 @@
           selector.addEventListener("click", (e) => {
             const btn = e.target.closest(".flier-thumb");
             if (!btn) return;
-            flierState.heroPhotoIdx = Number(btn.dataset.idx);
-            selector.querySelectorAll(".flier-thumb").forEach((t) => {
-              t.classList.toggle("selected", t === btn);
-            });
+            const idx = Number(btn.dataset.idx);
+            const idxs = flierState.heroPhotoIdxs ?? [];
+            const pos = idxs.indexOf(idx);
+            if (pos >= 0) {
+              if (idxs.length > 1) idxs.splice(pos, 1);
+            } else if (idxs.length < MAX_FLIER_PHOTOS) {
+              idxs.push(idx);
+            } else {
+              return;
+            }
+            flierState.heroPhotoIdxs = idxs;
+            updatePhotoSelectorUi();
             renderFlierFromState();
           });
         }
@@ -866,9 +1006,52 @@
         bindInput("flier-edit-broker-phone", "brokerPhone");
         bindInput("flier-edit-broker-email", "brokerEmail");
 
+        const tagline = document.getElementById("flier-edit-tagline");
+        if (tagline) tagline.addEventListener("input", (e) => {
+          flierState.tagline = e.target.value;
+          saveBranding();
+          renderFlierFromState();
+        });
+
+        const logoInput = document.getElementById("flier-logo-input");
+        if (logoInput) logoInput.addEventListener("change", (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          if (file.size > 2 * 1024 * 1024) {
+            alert("Logo too large — please use an image under 2 MB.");
+            logoInput.value = "";
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = () => {
+            flierState.logoDataUrl = reader.result;
+            saveBranding();
+            updateLogoPreviewUi();
+            renderFlierFromState();
+          };
+          reader.onerror = () => alert("Couldn't read that logo file.");
+          reader.readAsDataURL(file);
+          logoInput.value = "";
+        });
+
+        const logoClear = document.getElementById("flier-logo-clear");
+        if (logoClear) logoClear.addEventListener("click", () => {
+          flierState.logoDataUrl = null;
+          saveBranding();
+          updateLogoPreviewUi();
+          renderFlierFromState();
+        });
+
         const reset = document.getElementById("flier-reset");
         if (reset) reset.addEventListener("click", () => {
-          flierState = { ...flierDefaults };
+          const keptLogo = flierState.logoDataUrl;
+          const keptTagline = flierState.tagline;
+          flierState = {
+            ...flierDefaults,
+            heroPhotoIdxs: [...(flierDefaults.heroPhotoIdxs ?? [])],
+            logoDataUrl: keptLogo,
+            tagline: keptTagline,
+          };
           applyStateToInputs();
           renderFlierFromState();
         });
@@ -991,7 +1174,9 @@
         }
 
         flierDefaults = photos.length > 0 ? computeFlierDefaults(boatData, photoSummary) : null;
-        flierState = flierDefaults ? { ...flierDefaults } : null;
+        flierState = flierDefaults
+          ? { ...flierDefaults, heroPhotoIdxs: [...flierDefaults.heroPhotoIdxs] }
+          : null;
         parts.push(buildFlierSection(flierDefaults));
 
         const gallery = buildPhotoGallery(listing, photoSummary);
