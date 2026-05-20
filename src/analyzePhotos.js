@@ -13,6 +13,20 @@ const MEDIA_TYPES = {
   ".gif": "image/gif",
 };
 
+const STANDARD_CATEGORIES = [
+  "exterior_starboard_wide",
+  "bow",
+  "stern",
+  "helm",
+  "salon",
+  "galley",
+  "berth_master",
+  "head",
+  "engine_room",
+];
+
+const MAX_HERO_CANDIDATES = 3;
+
 function imageBlock(source) {
   if (typeof source !== "string") {
     throw new Error("Photo source must be a string (path, http(s) URL, or data URL)");
@@ -38,25 +52,69 @@ function imageBlock(source) {
   };
 }
 
-export async function analyzePhotos(photoSources) {
-  if (photoSources.length === 0) {
-    return { photos: [], missing_categories: [], quality_issues: [] };
-  }
-
+async function classifyOne(source, index) {
   const content = [
-    ...photoSources.map(imageBlock),
+    imageBlock(source),
     {
       type: "text",
-      text: `Classify these ${photoSources.length} photos per the system instructions. They are 1-indexed in the order shown.`,
+      text:
+        `Classify this single photo per the system instructions. ` +
+        `Return JSON only, in this exact shape (no surrounding object, no markdown): ` +
+        `{"category":"string","hero_candidate":boolean,"quality":"string","issue":"string or null"}. ` +
+        `Set "issue" to a short broker-facing note when quality is not "good", otherwise null.`,
     },
   ];
 
   const response = await client.messages.create({
     model: MODELS.vision,
-    max_tokens: 2000,
+    max_tokens: 400,
     system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content }],
   });
 
-  return parseJsonResponse(response.content[0].text);
+  const parsed = parseJsonResponse(response.content[0].text);
+  return {
+    index: index + 1,
+    category: parsed.category ?? "other",
+    hero_candidate: Boolean(parsed.hero_candidate),
+    quality: parsed.quality ?? "good",
+    _issue: parsed.issue ?? null,
+  };
+}
+
+export async function analyzePhotos(photoSources) {
+  if (!Array.isArray(photoSources) || photoSources.length === 0) {
+    return { photos: [], missing_categories: [...STANDARD_CATEGORIES], quality_issues: [] };
+  }
+
+  const settled = await Promise.all(
+    photoSources.map((source, i) =>
+      classifyOne(source, i).catch((err) => {
+        console.error(`Photo ${i + 1} classification failed:`, err?.message ?? err);
+        return null;
+      }),
+    ),
+  );
+
+  const photos = settled.filter(Boolean);
+
+  let heroCount = 0;
+  for (const p of photos) {
+    if (p.hero_candidate && heroCount < MAX_HERO_CANDIDATES) {
+      heroCount += 1;
+    } else {
+      p.hero_candidate = false;
+    }
+  }
+
+  const presentCategories = new Set(photos.map((p) => p.category));
+  const missing_categories = STANDARD_CATEGORIES.filter((c) => !presentCategories.has(c));
+
+  const quality_issues = photos
+    .filter((p) => p.quality && p.quality !== "good")
+    .map((p) => p._issue || `Photo ${p.index} (${p.category}): ${p.quality}`);
+
+  for (const p of photos) delete p._issue;
+
+  return { photos, missing_categories, quality_issues };
 }
