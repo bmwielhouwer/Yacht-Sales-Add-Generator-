@@ -92,6 +92,31 @@ a:hover { text-decoration: underline; }
   color: var(--muted);
 }
 .db-account .email { color: var(--ink); font-weight: 500; }
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.tier-badge.tier-listing {
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+}
+.tier-badge.tier-studio {
+  background: var(--brass);
+  color: #fff;
+}
+.tier-badge.tier-suite {
+  background: var(--navy);
+  color: var(--brass);
+  border: 1px solid var(--brass);
+}
 .db-cta {
   font-size: 13px;
   font-weight: 600;

@@ -26,10 +26,15 @@
         <span class="wordmark-divider" aria-hidden="true"></span>
         <span class="wordmark-primary"><a href="/">Compass Line Marine</a></span>
         <span class="header-spacer"></span>
+        <span class="tier-badge" id="tier-badge" hidden></span>
         <a href="/dashboard" class="header-cta" id="dashboard-link" hidden>Dashboard<svg class="header-cta-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></a>
         <span class="header-account" id="header-account" hidden>
           <span class="email" id="header-email"></span>
           <button type="button" class="header-logout" id="sign-out">Sign out</button>
+        </span>
+        <span class="header-anon" id="header-anon" hidden>
+          <button type="button" class="header-cta" id="anon-sign-in">Sign in</button>
+          <a href="/pricing" class="header-cta header-cta-emphasis">See pricing</a>
         </span>
       </div>
     </header>
@@ -158,6 +163,17 @@
           <span class="status" id="status"></span>
         </div>
 
+        <div class="auth-cta" id="auth-cta" hidden>
+          <div class="auth-cta-text">
+            <strong>Sign in to generate listings</strong>
+            <span>The form above is pre-filled with a sample so you can see what the AI expects.</span>
+          </div>
+          <div class="auth-cta-actions">
+            <button type="button" class="btn btn-secondary" id="auth-cta-signin">Have a code? Sign in</button>
+            <a class="btn btn-primary" href="/pricing">See pricing</a>
+          </div>
+        </div>
+
         <div class="loader" id="loader" hidden>
           <div class="loader-row" id="loader-step-notes">
             <span class="loader-dot loader-dot-pending" data-role="indicator"></span>
@@ -184,8 +200,9 @@
 
     <div class="gate-backdrop" id="gate" hidden role="dialog" aria-modal="true" aria-labelledby="gate-title">
       <div class="gate-card">
+        <button type="button" class="gate-close" id="gate-close" aria-label="Close">&times;</button>
         <h2 id="gate-title">Welcome to Compass Line Marine</h2>
-        <p class="sub">Enter your access code to begin.</p>
+        <p class="sub" id="gate-sub">Enter your access code to begin.</p>
         <form id="gate-form">
           <input id="gate-input" type="text" autocomplete="off" spellcheck="false" placeholder="CLM-XXXX-XXXX" required />
           <div class="gate-error" id="gate-error">Invalid code — check your welcome email</div>
@@ -204,47 +221,91 @@
 
     <script>
       const ACCESS_KEY = "clm.access_code";
+      const TIER_KEY = "clm.tier";
+      const SAMPLE_NOTES = `2017 Catalina 425 cruising sailboat, Yanmar 4JH80 80hp diesel about 940 hrs, in-mast furling main + 110 furling jib both North Sails 2022. B&G Zeus3 12" chart at helm, B&G Triton2 wind/speed/depth at companionway. Raymarine autopilot EV-200. Dual helms w/ teak wheels. Bow thruster Sleipner. 3-cabin layout, queen berth aft + queen berth fwd + small starboard cabin (currently used as gear locker). 2 heads w/ showers, electric flush. Galley w/ 3-burner Force 10 propane stove/oven, refrigeration + separate freezer. Solar 320w on dodger, Victron MPPT + 600Ah LiFePO4 house bank installed 2023. Ground tackle 60lb Mantus on 200ft 3/8 chain. Winter cover, full bimini and dodger, recent bottom paint May 2025. Boat lives at Oriental NC. Seller relocating north. Asking $295,000.`;
+
+      const TIER_LABELS = { LISTING: "PER-LISTING", STUDIO: "STUDIO", SUITE: "SUITE" };
+
       const gate = document.getElementById("gate");
       const gateForm = document.getElementById("gate-form");
       const gateInput = document.getElementById("gate-input");
       const gateError = document.getElementById("gate-error");
       const gateSubmit = document.getElementById("gate-submit");
+      const gateSub = document.getElementById("gate-sub");
+      const gateClose = document.getElementById("gate-close");
       const signOutBtn = document.getElementById("sign-out");
       const dashboardLink = document.getElementById("dashboard-link");
       const headerAccount = document.getElementById("header-account");
       const headerEmail = document.getElementById("header-email");
+      const headerAnon = document.getElementById("header-anon");
+      const tierBadgeEl = document.getElementById("tier-badge");
+      const authCta = document.getElementById("auth-cta");
+      const submitBtn = document.getElementById("submit");
+      const notesTextarea = document.getElementById("notes");
 
       let dashSession = null;
+      const DEFAULT_GATE_SUB = "Enter your access code to begin.";
+      const FIRST_TIME_GATE_SUB = "Sign in to generate your first listing.";
 
       function getAccessCode() {
         return localStorage.getItem(ACCESS_KEY);
       }
-      function openGate() {
+      function getStoredTier() {
+        return localStorage.getItem(TIER_KEY);
+      }
+      function setStoredTier(tier) {
+        if (tier) localStorage.setItem(TIER_KEY, String(tier).toUpperCase());
+        else localStorage.removeItem(TIER_KEY);
+      }
+      function openGate({ firstTime = false } = {}) {
         gate.hidden = false;
         document.body.style.overflow = "hidden";
-        headerAccount.hidden = true;
-        dashboardLink.hidden = true;
+        gateSub.textContent = firstTime ? FIRST_TIME_GATE_SUB : DEFAULT_GATE_SUB;
         setTimeout(() => gateInput.focus(), 50);
       }
       function closeGate() {
         gate.hidden = true;
         document.body.style.overflow = "";
       }
-      function showSignedInChrome(email) {
+      function renderTierBadge(tier) {
+        if (!tier || !TIER_LABELS[tier]) {
+          tierBadgeEl.hidden = true;
+          tierBadgeEl.textContent = "";
+          tierBadgeEl.className = "tier-badge";
+          return;
+        }
+        tierBadgeEl.hidden = false;
+        tierBadgeEl.textContent = TIER_LABELS[tier];
+        tierBadgeEl.className = "tier-badge tier-" + tier.toLowerCase();
+      }
+      function applyAuthedChrome({ email = "", tier = null } = {}) {
         headerEmail.textContent = email || "";
         headerAccount.hidden = false;
         dashboardLink.hidden = false;
+        headerAnon.hidden = true;
+        authCta.hidden = true;
+        submitBtn.disabled = false;
+        submitBtn.classList.remove("is-disabled-unauth");
+        renderTierBadge(tier);
+        if (notesTextarea.value === SAMPLE_NOTES) notesTextarea.value = "";
       }
-      function showCodeOnlyChrome() {
-        headerAccount.hidden = false;
+      function applyUnauthedChrome() {
+        headerAccount.hidden = true;
         headerEmail.textContent = "";
-        dashboardLink.hidden = false;
+        dashboardLink.hidden = true;
+        headerAnon.hidden = false;
+        authCta.hidden = false;
+        submitBtn.disabled = true;
+        submitBtn.classList.add("is-disabled-unauth");
+        renderTierBadge(null);
+        if (!notesTextarea.value) notesTextarea.value = SAMPLE_NOTES;
       }
       async function signOut() {
         try {
           await fetch("/api/dashboard/logout", { method: "POST", credentials: "same-origin" });
         } catch {}
         localStorage.removeItem(ACCESS_KEY);
+        setStoredTier(null);
         location.reload();
       }
 
@@ -292,7 +353,8 @@
           const data = await res.json().catch(() => ({}));
           if (res.ok && data.ok) {
             localStorage.setItem(ACCESS_KEY, code);
-            showCodeOnlyChrome();
+            setStoredTier(data.tier);
+            applyAuthedChrome({ email: "", tier: data.tier });
             closeGate();
           } else {
             gateError.textContent = data.error || "Invalid code — check your welcome email";
@@ -308,20 +370,34 @@
       });
 
       signOutBtn.addEventListener("click", signOut);
+      document.getElementById("anon-sign-in").addEventListener("click", () => openGate());
+      document.getElementById("auth-cta-signin").addEventListener("click", () => openGate());
+      gateClose.addEventListener("click", () => closeGate());
+      submitBtn.addEventListener("click", (e) => {
+        if (submitBtn.disabled || submitBtn.classList.contains("is-disabled-unauth")) {
+          e.preventDefault();
+          e.stopPropagation();
+          openGate({ firstTime: true });
+        }
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !gate.hidden) closeGate();
+      });
 
       (async () => {
         const me = await tryDashboardSession();
         if (me?.email) {
           dashSession = me;
-          showSignedInChrome(me.email);
+          if (me.tier) setStoredTier(me.tier);
+          applyAuthedChrome({ email: me.email, tier: me.tier ?? getStoredTier() });
           prefillBroker(me.profile);
           closeGate();
           return;
         }
         if (getAccessCode()) {
-          showCodeOnlyChrome();
+          applyAuthedChrome({ email: "", tier: getStoredTier() });
         } else {
-          openGate();
+          applyUnauthedChrome();
         }
       })();
 
@@ -1602,6 +1678,10 @@
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
+        if (submitBtn.classList.contains("is-disabled-unauth")) {
+          openGate({ firstTime: true });
+          return;
+        }
         const rawInput = $("notes").value.trim();
         const category = $("category").value;
         const priceDigits = $("price").value.replace(/[^\d]/g, "");

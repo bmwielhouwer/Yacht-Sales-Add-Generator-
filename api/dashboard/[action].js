@@ -85,8 +85,9 @@ async function loginHandler(req, res) {
     });
   }
 
-  setSessionCookie(res, email);
-  return res.status(200).json({ ok: true, email });
+  const tier = record?.tier ? String(record.tier).toUpperCase() : null;
+  setSessionCookie(res, email, { tier });
+  return res.status(200).json({ ok: true, email, tier });
 }
 
 async function logoutHandler(req, res) {
@@ -127,7 +128,7 @@ async function meHandler(req, res) {
     console.warn("[dashboard.me] profile lookup failed", err?.message ?? err);
   }
 
-  return res.status(200).json({ email: session.email, profile });
+  return res.status(200).json({ email: session.email, tier: session.tier ?? null, profile });
 }
 
 async function listingsHandler(req, res) {

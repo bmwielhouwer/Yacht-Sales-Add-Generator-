@@ -51,6 +51,7 @@
         <a href="/dashboard/leads">All leads</a>
       </nav>
       <div class="db-account">
+        <span class="tier-badge" data-tier hidden></span>
         <a href="/" class="db-cta">Create new listing</a>
         <span class="email" data-email></span>
         <button type="button" class="db-logout" data-logout>Sign out</button>
@@ -162,8 +163,21 @@
     return data;
   }
 
-  function bindHeader(email) {
+  const TIER_LABELS = { LISTING: "PER-LISTING", STUDIO: "STUDIO", SUITE: "SUITE" };
+  function bindHeader(email, tier) {
     document.querySelectorAll("[data-email]").forEach((n) => { n.textContent = email; });
+    document.querySelectorAll("[data-tier]").forEach((n) => {
+      const t = tier ? String(tier).toUpperCase() : null;
+      if (!t || !TIER_LABELS[t]) {
+        n.hidden = true;
+        n.textContent = "";
+        n.className = "tier-badge";
+        return;
+      }
+      n.hidden = false;
+      n.textContent = TIER_LABELS[t];
+      n.className = "tier-badge tier-" + t.toLowerCase();
+    });
     document.querySelectorAll("[data-logout]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         try { await fetchJSON("/api/dashboard/logout", { method: "POST" }); } catch {}
@@ -284,7 +298,7 @@
 
   function renderListings(data) {
     render("tpl-listings");
-    bindHeader(data.email);
+    bindHeader(data.email, data.tier);
     allListings = Array.isArray(data.listings) ? data.listings.slice() : [];
     const controls = document.getElementById("listings-controls");
     if (controls) {
@@ -487,7 +501,7 @@
     const list = document.getElementById("listings-list");
     try {
       const me = await fetchJSON("/api/dashboard/me");
-      bindHeader(me.email);
+      bindHeader(me.email, me.tier);
       const data = await fetchJSON("/api/dashboard/listings");
       renderListings(data);
     } catch (err) {

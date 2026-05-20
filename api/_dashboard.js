@@ -77,9 +77,11 @@ function cookieAttrs() {
   return attrs;
 }
 
-export function setSessionCookie(res, email) {
+export function setSessionCookie(res, email, extras = {}) {
   const exp = Math.floor(Date.now() / 1000) + COOKIE_TTL_SECONDS;
-  const token = sign({ email: normalizeEmail(email), exp });
+  const payload = { email: normalizeEmail(email), exp };
+  if (extras.tier) payload.tier = String(extras.tier).toUpperCase();
+  const token = sign(payload);
   const parts = [
     `${COOKIE_NAME}=${token}`,
     ...cookieAttrs(),
