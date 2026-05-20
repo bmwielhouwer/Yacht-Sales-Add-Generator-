@@ -158,18 +158,33 @@ function inquiryHtml({ broker, lead, listing }) {
 
 export async function sendInquiryEmail({ broker, lead, listing }) {
   const resend = getResend();
-  if (!broker?.email) throw new Error("Broker email missing");
+  if (!broker?.email) throw new Error("Broker email missing on the saved listing");
   const subj = listing?.boatName
     ? `New inquiry: ${listing.boatName}`
     : "New inquiry on your listing";
+  console.log("[inquiry-email] sending", {
+    to: broker.email,
+    from: "Compass Line Marine <noreply@compasslineventures.com>",
+    replyTo: lead.email,
+    subject: subj,
+  });
   const { data, error } = await resend.emails.send({
     from: "Compass Line Marine <noreply@compasslineventures.com>",
     to: broker.email,
-    reply_to: lead.email,
+    replyTo: lead.email,
     subject: subj,
     html: inquiryHtml({ broker, lead, listing }),
   });
-  if (error) throw new Error(`Resend send failed: ${error.message || JSON.stringify(error)}`);
+  if (error) {
+    console.error("[inquiry-email] resend rejected", {
+      name: error?.name,
+      message: error?.message,
+      statusCode: error?.statusCode,
+      raw: error,
+    });
+    throw new Error(`Resend rejected: ${error.message || error.name || JSON.stringify(error)}`);
+  }
+  console.log("[inquiry-email] sent", { id: data?.id });
   return data;
 }
 
