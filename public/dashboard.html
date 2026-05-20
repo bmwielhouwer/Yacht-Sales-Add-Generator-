@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Broker Dashboard — Compass Line Marine</title>
+<meta name="robots" content="noindex,nofollow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/dashboard.css" />
+</head>
+<body>
+
+<div id="db-app">
+  <div class="db-loading">Loading…</div>
+</div>
+
+<template id="tpl-login">
+  <header class="db-header">
+    <div class="db-header-inner">
+      <div class="db-brand">Compass Line Marine<small>Broker dashboard</small></div>
+    </div>
+  </header>
+  <main class="db-login">
+    <div class="db-card">
+      <h1>Sign in</h1>
+      <p class="sub">Enter the email and access code you received when you signed up.</p>
+      <form id="login-form" novalidate>
+        <label class="db-field">
+          <span>Email</span>
+          <input name="email" type="email" autocomplete="email" required />
+        </label>
+        <label class="db-field">
+          <span>Access code</span>
+          <input name="code" type="text" autocomplete="off" spellcheck="false" placeholder="CLM-XXXX-XXXXXX" required />
+        </label>
+        <div class="db-form-error" id="login-error"></div>
+        <button type="submit" class="db-submit" id="login-submit">Sign in</button>
+      </form>
+    </div>
+  </main>
+</template>
+
+<template id="tpl-listings">
+  <header class="db-header">
+    <div class="db-header-inner">
+      <div class="db-brand">Compass Line Marine<small>Broker dashboard</small></div>
+      <nav class="db-nav">
+        <a href="/dashboard" class="active">Listings</a>
+        <a href="/dashboard/leads">All leads</a>
+      </nav>
+      <div class="db-account">
+        <span class="email" data-email></span>
+        <button type="button" class="db-logout" data-logout>Sign out</button>
+      </div>
+    </div>
+  </header>
+  <main class="db-main">
+    <h1 class="db-page-title">Your listings</h1>
+    <p class="db-page-sub">Each listing here can collect inquiries from buyers.</p>
+    <div id="listings-list">
+      <div class="db-loading">Loading listings…</div>
+    </div>
+  </main>
+  <footer class="db-footer">Compass Line Marine · Built for serious yacht brokers</footer>
+</template>
+
+<script>
+(function() {
+  const app = document.getElementById("db-app");
+
+  function el(tag, attrs = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") node.className = v;
+      else if (k === "html") node.innerHTML = v;
+      else if (v != null) node.setAttribute(k, v);
+    }
+    for (const c of children) {
+      if (c == null) continue;
+      node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    }
+    return node;
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function render(templateId) {
+    app.innerHTML = "";
+    const tpl = document.getElementById(templateId);
+    app.appendChild(tpl.content.cloneNode(true));
+  }
+
+  async function fetchJSON(url, opts = {}) {
+    const res = await fetch(url, {
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+      ...opts,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || ("HTTP " + res.status));
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+
+  function bindHeader(email) {
+    document.querySelectorAll("[data-email]").forEach((n) => { n.textContent = email; });
+    document.querySelectorAll("[data-logout]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try { await fetchJSON("/api/dashboard/logout", { method: "POST" }); } catch {}
+        location.reload();
+      });
+    });
+  }
+
+  function showLogin(prefillError) {
+    render("tpl-login");
+    const form = document.getElementById("login-form");
+    const errEl = document.getElementById("login-error");
+    const submit = document.getElementById("login-submit");
+    if (prefillError) {
+      errEl.textContent = prefillError;
+      errEl.classList.add("show");
+    }
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errEl.classList.remove("show");
+      const fd = new FormData(form);
+      const payload = {
+        email: String(fd.get("email") || "").trim(),
+        code: String(fd.get("code") || "").trim().toUpperCase(),
+      };
+      submit.disabled = true;
+      submit.textContent = "Signing in…";
+      try {
+        await fetchJSON("/api/dashboard/login", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        await loadListings();
+      } catch (err) {
+        errEl.textContent = err.message || "Sign-in failed.";
+        errEl.classList.add("show");
+      } finally {
+        submit.disabled = false;
+        submit.textContent = "Sign in";
+      }
+    });
+    setTimeout(() => form.querySelector("input[name=email]")?.focus(), 30);
+  }
+
+  function renderListings(data) {
+    render("tpl-listings");
+    bindHeader(data.email);
+    const list = document.getElementById("listings-list");
+    list.innerHTML = "";
+    if (!data.listings.length) {
+      list.appendChild(
+        el("div", { class: "db-card db-empty" },
+          el("h3", {}, "No listings yet"),
+          el("p", {}, "Generate your first listing in the main app — it'll show up here."),
+          el("a", { class: "db-btn db-btn-primary", href: "/" }, "Open the generator"),
+        ),
+      );
+      return;
+    }
+    for (const item of data.listings) {
+      const meta = el("div", { class: "db-listing-meta" });
+      if (item.price) meta.appendChild(el("span", { class: "price" }, item.price));
+      meta.appendChild(el("span", {}, "Created " + fmtDate(item.createdAt)));
+      const leadSpan = el("span", { class: "lead-count" + (item.leadCount ? " has-leads" : "") });
+      const strong = el("strong", {}, String(item.leadCount));
+      leadSpan.appendChild(strong);
+      leadSpan.appendChild(document.createTextNode(" " + (item.leadCount === 1 ? "lead" : "leads")));
+      meta.appendChild(leadSpan);
+
+      const actions = el("div", { class: "db-listing-actions" },
+        el("a", { class: "db-btn", href: item.url, target: "_blank", rel: "noopener" }, "View public page"),
+        el("a", { class: "db-btn db-btn-primary", href: "/dashboard/leads?slug=" + encodeURIComponent(item.slug) }, "See leads"),
+      );
+
+      const row = el("div", { class: "db-listing-row" },
+        el("div", {},
+          el("h2", { class: "db-listing-name" }, item.boatName),
+          meta,
+        ),
+        actions,
+      );
+      list.appendChild(row);
+    }
+  }
+
+  async function loadListings() {
+    render("tpl-listings");
+    const list = document.getElementById("listings-list");
+    try {
+      const me = await fetchJSON("/api/dashboard/me");
+      bindHeader(me.email);
+      const data = await fetchJSON("/api/dashboard/listings");
+      renderListings(data);
+    } catch (err) {
+      if (err.status === 401) {
+        showLogin();
+        return;
+      }
+      list.innerHTML = "";
+      list.appendChild(el("div", { class: "db-error" }, err.message || "Couldn't load listings."));
+    }
+  }
+
+  loadListings();
+})();
+</script>
+
+</body>
+</html>

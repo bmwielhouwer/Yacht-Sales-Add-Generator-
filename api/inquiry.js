@@ -77,14 +77,15 @@ async function handleInquiry(req, res) {
     user_agent: truncate(req.headers["user-agent"], 300),
   };
 
+  const broker = listingRecord.broker || listingRecord.boatData?.broker || {};
+
   try {
-    await saveLead(slug, lead);
+    await saveLead(slug, lead, broker?.email || null);
   } catch (err) {
     console.error("saveLead failed", err);
     return res.status(500).json({ error: "Could not save inquiry." });
   }
 
-  const broker = listingRecord.broker || listingRecord.boatData?.broker || {};
   const boatName =
     listingRecord.flier?.boatName ||
     [listingRecord.boatData?.year, listingRecord.boatData?.make, listingRecord.boatData?.model]
