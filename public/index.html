@@ -672,11 +672,40 @@
         return bits.join(" ").toUpperCase();
       }
 
-      function findHeroPhotoDataUrl(photoSummary) {
+      const BANNER_OPTIONS = [
+        { label: "Just Listed", value: "JUST LISTED" },
+        { label: "New Listing", value: "NEW LISTING" },
+        { label: "Price Reduced", value: "PRICE REDUCED" },
+        { label: "New Price", value: "NEW PRICE" },
+        { label: "Open Boat", value: "OPEN BOAT" },
+        { label: "Just Sold", value: "JUST SOLD" },
+      ];
+
+      let flierState = null;
+      let flierDefaults = null;
+
+      function defaultHeroIdx(photoSummary) {
+        if (photos.length === 0) return null;
         const hero = (photoSummary?.photos ?? []).find((p) => p.hero_candidate);
-        if (!hero) return null;
-        const photo = photos[hero.index - 1];
-        return photo?.dataUrl ?? null;
+        if (hero && photos[hero.index - 1]) return hero.index;
+        return 1;
+      }
+
+      function computeFlierDefaults(boatData, photoSummary) {
+        const usd = boatData.asking_price_usd;
+        const priceText = usd != null && !Number.isNaN(Number(usd))
+          ? Number(usd).toLocaleString("en-US")
+          : "";
+        return {
+          banner: "JUST LISTED",
+          heroPhotoIdx: defaultHeroIdx(photoSummary),
+          boatName: buildFlierBoatName(boatData),
+          priceText,
+          specs: buildFlierSpecs(boatData),
+          brokerName: boatData.broker?.name ?? "",
+          brokerPhone: boatData.broker?.phone ?? "",
+          brokerEmail: boatData.broker?.email ?? "",
+        };
       }
 
       function populateFlierBroker(broker) {
@@ -708,19 +737,141 @@
         });
       }
 
-      function populateFlier(boatData, photoSummary) {
-        const heroUrl = findHeroPhotoDataUrl(photoSummary);
-        if (!heroUrl) return false;
+      function renderFlierFromState() {
+        if (!flierState) return;
+        const stage = document.getElementById("flier-stage");
+        if (!stage) return;
 
-        document.getElementById("flier-photo").src = heroUrl;
-        document.getElementById("flier-boat-name").textContent = buildFlierBoatName(boatData);
+        const photo = photos[flierState.heroPhotoIdx - 1];
+        if (photo) stage.querySelector(".flier-photo").src = photo.dataUrl;
 
-        const price = formatFlierPrice(boatData.asking_price_usd);
-        document.getElementById("flier-price").textContent = price ?? "Price on Request";
+        stage.querySelector(".flier-banner").textContent = flierState.banner;
+        stage.querySelector(".flier-boat-name").textContent = flierState.boatName;
+        stage.querySelector(".flier-price").textContent = flierState.priceText.trim()
+          ? "$" + flierState.priceText
+          : "Price on Request";
+        stage.querySelector(".flier-specs").textContent = flierState.specs;
+        populateFlierBroker({
+          name: flierState.brokerName,
+          phone: flierState.brokerPhone,
+          email: flierState.brokerEmail,
+        });
+      }
 
-        document.getElementById("flier-specs").textContent = buildFlierSpecs(boatData);
-        populateFlierBroker(boatData.broker);
-        return true;
+      function buildCustomizePanel(defaults) {
+        const thumbs = photos.map((p, i) => {
+          const idx = i + 1;
+          const sel = idx === defaults.heroPhotoIdx ? "selected" : "";
+          return `
+            <button type="button" class="flier-thumb ${sel}" data-idx="${idx}" aria-label="Use photo ${idx} as hero">
+              <img src="${p.dataUrl}" alt="" />
+              <span class="flier-thumb-badge">Selected</span>
+            </button>
+          `;
+        }).join("");
+
+        const bannerOptions = BANNER_OPTIONS.map((opt) =>
+          `<option value="${escape(opt.value)}">${escape(opt.label)}</option>`
+        ).join("");
+
+        return `
+          <div class="flier-customize">
+            <div class="flier-customize-title">Customize this flier</div>
+            <div class="flier-customize-section">
+              <label>Photo</label>
+              <div class="flier-photo-selector" id="flier-photo-selector">${thumbs}</div>
+            </div>
+            <div class="flier-customize-section">
+              <label for="flier-banner-select">Banner</label>
+              <select id="flier-banner-select">${bannerOptions}</select>
+            </div>
+            <div class="flier-customize-grid">
+              <div>
+                <label for="flier-edit-name">Boat name</label>
+                <input id="flier-edit-name" type="text" autocomplete="off" />
+              </div>
+              <div>
+                <label for="flier-edit-price">Price</label>
+                <div class="price-input">
+                  <input id="flier-edit-price" type="text" autocomplete="off" placeholder="189,000" />
+                </div>
+              </div>
+              <div class="flier-customize-full">
+                <label for="flier-edit-specs">Specs line</label>
+                <input id="flier-edit-specs" type="text" autocomplete="off" />
+              </div>
+              <div>
+                <label for="flier-edit-broker-name">Broker name</label>
+                <input id="flier-edit-broker-name" type="text" autocomplete="off" />
+              </div>
+              <div>
+                <label for="flier-edit-broker-phone">Broker phone</label>
+                <input id="flier-edit-broker-phone" type="text" autocomplete="off" />
+              </div>
+              <div class="flier-customize-full">
+                <label for="flier-edit-broker-email">Broker email</label>
+                <input id="flier-edit-broker-email" type="text" autocomplete="off" />
+              </div>
+            </div>
+            <button type="button" class="flier-reset-link" id="flier-reset">Reset to AI defaults</button>
+          </div>
+        `;
+      }
+
+      function applyStateToInputs() {
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        set("flier-banner-select", flierState.banner);
+        set("flier-edit-name", flierState.boatName);
+        set("flier-edit-price", flierState.priceText);
+        set("flier-edit-specs", flierState.specs);
+        set("flier-edit-broker-name", flierState.brokerName);
+        set("flier-edit-broker-phone", flierState.brokerPhone);
+        set("flier-edit-broker-email", flierState.brokerEmail);
+        document.querySelectorAll("#flier-photo-selector .flier-thumb").forEach((t) => {
+          t.classList.toggle("selected", Number(t.dataset.idx) === flierState.heroPhotoIdx);
+        });
+      }
+
+      function wireCustomizeHandlers() {
+        const selector = document.getElementById("flier-photo-selector");
+        if (selector) {
+          selector.addEventListener("click", (e) => {
+            const btn = e.target.closest(".flier-thumb");
+            if (!btn) return;
+            flierState.heroPhotoIdx = Number(btn.dataset.idx);
+            selector.querySelectorAll(".flier-thumb").forEach((t) => {
+              t.classList.toggle("selected", t === btn);
+            });
+            renderFlierFromState();
+          });
+        }
+
+        const bindInput = (id, key) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener("input", (e) => {
+            flierState[key] = e.target.value;
+            renderFlierFromState();
+          });
+        };
+        const banner = document.getElementById("flier-banner-select");
+        if (banner) banner.addEventListener("change", (e) => {
+          flierState.banner = e.target.value;
+          renderFlierFromState();
+        });
+        bindInput("flier-edit-name", "boatName");
+        bindInput("flier-edit-price", "priceText");
+        bindInput("flier-edit-specs", "specs");
+        bindInput("flier-edit-broker-name", "brokerName");
+        bindInput("flier-edit-broker-phone", "brokerPhone");
+        bindInput("flier-edit-broker-email", "brokerEmail");
+
+        const reset = document.getElementById("flier-reset");
+        if (reset) reset.addEventListener("click", () => {
+          flierState = { ...flierDefaults };
+          applyStateToInputs();
+          renderFlierFromState();
+        });
       }
 
       function flierFileName(boatData) {
@@ -776,9 +927,8 @@
         }
       }
 
-      function buildFlierSection(boatData, photoSummary) {
-        const heroUrl = findHeroPhotoDataUrl(photoSummary);
-        if (!heroUrl) {
+      function buildFlierSection(defaults) {
+        if (!defaults) {
           return `
             <section class="flier-section">
               <h2 class="flier-section-title">Social Media Flier</h2>
@@ -793,17 +943,18 @@
               <div class="flier-preview-frame">
                 <div class="flier-stage flier-stage-preview" id="flier-stage">
                   <div class="flier-canvas">
-                    <div class="flier-banner">JUST LISTED</div>
+                    <div class="flier-banner"></div>
                     <div class="flier-content">
-                      <div class="flier-photo-wrap"><img class="flier-photo" id="flier-photo" alt="" /></div>
-                      <div class="flier-boat-name" id="flier-boat-name"></div>
-                      <div class="flier-price" id="flier-price"></div>
-                      <div class="flier-specs" id="flier-specs"></div>
+                      <div class="flier-photo-wrap"><img class="flier-photo" alt="" /></div>
+                      <div class="flier-boat-name"></div>
+                      <div class="flier-price"></div>
+                      <div class="flier-specs"></div>
                     </div>
                     <div class="flier-bottom"></div>
                   </div>
                 </div>
               </div>
+              ${buildCustomizePanel(defaults)}
               <button type="button" class="btn btn-primary" id="download-flier">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 <span>Download Flier</span>
@@ -812,6 +963,11 @@
             </div>
           </section>
         `;
+      }
+
+      function autoGrowOutput(el) {
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
       }
 
       function renderResults(data) {
@@ -834,15 +990,18 @@
           parts.push(`<div class="gap-banner"><strong>Photo gap analysis.</strong> ${escape(gap)}</div>`);
         }
 
-        parts.push(buildFlierSection(boatData, photoSummary));
+        flierDefaults = photos.length > 0 ? computeFlierDefaults(boatData, photoSummary) : null;
+        flierState = flierDefaults ? { ...flierDefaults } : null;
+        parts.push(buildFlierSection(flierDefaults));
 
         const gallery = buildPhotoGallery(listing, photoSummary);
         if (gallery) parts.push(gallery);
 
+        const outputValues = {};
         for (const { key, title, subtitle } of SECTIONS) {
           const value = readListingValue(listing, key);
           if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) continue;
-          const text = formatSection(key, value);
+          outputValues[key] = formatSection(key, value);
           parts.push(`
             <div class="card output-card">
               <div class="card-header">
@@ -850,12 +1009,12 @@
                   <div class="card-title">${escape(title)}</div>
                   <div class="card-subtitle">${escape(subtitle)}</div>
                 </div>
-                <button type="button" class="btn btn-outline copy-btn" data-text="${escape(text)}">
+                <button type="button" class="btn btn-outline copy-btn" data-output-key="${key}">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                   Copy to clipboard
                 </button>
               </div>
-              <pre class="output${key === "instagram_hashtags" ? " output-mono" : ""}">${escape(text)}</pre>
+              <textarea class="output${key === "instagram_hashtags" ? " output-mono" : ""}" data-output-key="${key}" rows="1" spellcheck="false"></textarea>
             </div>
           `);
         }
@@ -871,10 +1030,21 @@
         results.classList.add("show");
         results.scrollIntoView({ behavior: "smooth", block: "start" });
 
+        for (const [key, text] of Object.entries(outputValues)) {
+          const ta = results.querySelector(`textarea[data-output-key="${key}"]`);
+          if (!ta) continue;
+          ta.value = text;
+          autoGrowOutput(ta);
+          ta.addEventListener("input", () => autoGrowOutput(ta));
+        }
+
         results.querySelectorAll(".copy-btn").forEach((btn) => {
           btn.addEventListener("click", async () => {
+            const key = btn.dataset.outputKey;
+            const ta = results.querySelector(`textarea[data-output-key="${key}"]`);
+            const text = ta?.value ?? "";
             try {
-              await navigator.clipboard.writeText(btn.dataset.text);
+              await navigator.clipboard.writeText(text);
               const orig = btn.innerHTML;
               btn.innerHTML = "Copied";
               setTimeout(() => (btn.innerHTML = orig), 1200);
@@ -885,8 +1055,10 @@
         });
         $("download-zip").addEventListener("click", downloadZip);
 
-        if (document.getElementById("flier-stage")) {
-          populateFlier(boatData, photoSummary);
+        if (document.getElementById("flier-stage") && flierState) {
+          applyStateToInputs();
+          renderFlierFromState();
+          wireCustomizeHandlers();
           const dlFlier = document.getElementById("download-flier");
           if (dlFlier) dlFlier.addEventListener("click", downloadFlier);
         }
@@ -898,19 +1070,21 @@
         return slug || "listing";
       }
 
-      function buildTextFiles(listing) {
+      function readOutputValue(key) {
+        const el = document.querySelector(`textarea[data-output-key="${key}"]`);
+        return el ? el.value : "";
+      }
+
+      function buildTextFiles() {
         const files = [];
-        files.push(["long-description.txt", listing.long_description ?? ""]);
-        files.push(["facebook-marketplace.txt", listing.facebook_marketplace ?? ""]);
-        files.push(["facebook-post.txt", listing.facebook_post ?? ""]);
-        const ig = listing.instagram_caption ?? "";
-        const tags = Array.isArray(listing.instagram_hashtags)
-          ? listing.instagram_hashtags.map((t) => (t.startsWith("#") ? t : "#" + t)).join(" ")
-          : "";
+        files.push(["long-description.txt", readOutputValue("long_description")]);
+        files.push(["facebook-marketplace.txt", readOutputValue("facebook_marketplace")]);
+        files.push(["facebook-post.txt", readOutputValue("facebook_post")]);
+        const ig = readOutputValue("instagram_caption");
+        const tags = readOutputValue("instagram_hashtags");
         files.push(["instagram.txt", `${ig}\n\n${tags}\n`]);
-        files.push(["linkedin.txt", listing.linkedin_post ?? ""]);
-        const email = listing.email_blast ?? {};
-        files.push(["email.txt", `Subject: ${email.subject ?? ""}\n\n${email.body ?? ""}\n`]);
+        files.push(["linkedin.txt", readOutputValue("linkedin_post")]);
+        files.push(["email.txt", `Subject: ${readOutputValue("email_subject")}\n\n${readOutputValue("email_body")}\n`]);
         return files;
       }
 
@@ -926,7 +1100,7 @@
           const base = listingBaseName(boatData);
           const root = zip.folder(base);
 
-          for (const [name, content] of buildTextFiles(listing)) {
+          for (const [name, content] of buildTextFiles()) {
             root.file(name, content);
           }
           root.file("boat-data.json", JSON.stringify(boatData, null, 2));
