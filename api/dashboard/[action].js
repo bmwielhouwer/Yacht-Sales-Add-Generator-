@@ -36,6 +36,19 @@ function boatName(record) {
   return [bd?.year, bd?.make, bd?.model].filter(Boolean).join(" ") || null;
 }
 
+function fallbackName(record) {
+  const iso = record?.created_at;
+  if (!iso) return "Untitled listing";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Untitled listing";
+  const date = d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  return `Listing from ${date}`;
+}
+
 async function loginHandler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -116,7 +129,7 @@ async function listingsHandler(req, res) {
       if (!record) return null;
       return {
         slug,
-        boatName: boatName(record) || "Untitled listing",
+        boatName: boatName(record) || fallbackName(record),
         price: priceText(record),
         url: record.listingUrl || listingUrl(origin, slug),
         createdAt: record.created_at ?? null,
