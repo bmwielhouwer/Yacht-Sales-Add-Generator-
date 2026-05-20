@@ -277,14 +277,18 @@
     const count = selectedEmails.size;
     document.getElementById("selected-count").textContent = `${count} selected`;
     const btn = document.getElementById("generate-btn");
-    btn.disabled = count === 0 || usageCache.used + count > usageCache.cap;
-    if (count === 0) btn.textContent = "Generate outreach for selected";
-    else btn.textContent = `Generate outreach for ${count} contact${count === 1 ? "" : "s"}`;
-    document.getElementById("generate-row").hidden = contactsCache.length === 0;
-    const remaining = usageCache.cap - usageCache.used;
-    if (usageCache.used + count > usageCache.cap) {
-      btn.textContent = `Over monthly cap — ${remaining} remaining`;
+    const remaining = Math.max(0, usageCache.cap - usageCache.used);
+    btn.disabled = count === 0 || remaining === 0;
+    if (count === 0) {
+      btn.textContent = "Generate outreach for selected";
+    } else if (remaining === 0) {
+      btn.textContent = "Monthly cap reached";
+    } else if (count > remaining) {
+      btn.textContent = `Generate ${remaining} of ${count} (cap remaining this month)`;
+    } else {
+      btn.textContent = `Generate outreach for ${count} contact${count === 1 ? "" : "s"}`;
     }
+    document.getElementById("generate-row").hidden = contactsCache.length === 0;
   }
 
   function renderContacts() {
@@ -517,43 +521,79 @@
     });
   }
 
+  const GENERATE_BATCH_SIZE = 25;
+
   function wireGenerateButton(slug) {
     const btn = document.getElementById("generate-btn");
     btn.addEventListener("click", async () => {
       if (selectedEmails.size === 0) return;
       btn.disabled = true;
       const prevText = btn.textContent;
-      btn.textContent = "Generating…";
+
+      const emails = Array.from(selectedEmails);
+      const batches = [];
+      for (let i = 0; i < emails.length; i += GENERATE_BATCH_SIZE) {
+        batches.push(emails.slice(i, i + GENERATE_BATCH_SIZE));
+      }
+
+      const allNewDrafts = [];
+      let totalFailed = 0;
+      let capHit = false;
+      let lastError = null;
+
       try {
-        const resp = await fetchJSON("/api/outreach/generate", {
-          method: "POST",
-          body: JSON.stringify({
-            listing_slug: slug,
-            selected_contact_emails: Array.from(selectedEmails),
-          }),
-        });
-        usageCache = resp.usage || usageCache;
-        renderUsage(usageCache);
-        const newDrafts = Array.isArray(resp.drafts) ? resp.drafts : [];
-        currentDrafts = [...newDrafts, ...currentDrafts];
-        renderDrafts(currentDrafts);
-        selectedEmails.clear();
+        for (let b = 0; b < batches.length; b++) {
+          const batch = batches[b];
+          const start = b * GENERATE_BATCH_SIZE + 1;
+          const end = start + batch.length - 1;
+          btn.textContent = batches.length === 1
+            ? `Generating ${batch.length}…`
+            : `Generating ${start}–${end} of ${emails.length}…`;
+          let resp;
+          try {
+            resp = await fetchJSON("/api/outreach/generate", {
+              method: "POST",
+              body: JSON.stringify({
+                listing_slug: slug,
+                selected_contact_emails: batch,
+              }),
+            });
+          } catch (err) {
+            if (err.status === 429 && err.payload?.usage) {
+              usageCache = err.payload.usage;
+              renderUsage(usageCache);
+              capHit = true;
+              lastError = err;
+              break;
+            }
+            lastError = err;
+            break;
+          }
+          usageCache = resp.usage || usageCache;
+          renderUsage(usageCache);
+          const newDrafts = Array.isArray(resp.drafts) ? resp.drafts : [];
+          allNewDrafts.push(...newDrafts);
+          totalFailed += (resp.failed || []).length;
+          currentDrafts = [...newDrafts, ...currentDrafts];
+          renderDrafts(currentDrafts);
+          for (const e of batch) selectedEmails.delete(e);
+        }
+
         const sa = document.getElementById("select-all");
         if (sa) sa.checked = false;
         paintRowChecks();
-        const failedCount = (resp.failed || []).length;
-        if (failedCount > 0) {
-          toast(`Generated ${newDrafts.length}, ${failedCount} failed.`);
-        } else {
-          toast(`Generated ${newDrafts.length} draft${newDrafts.length === 1 ? "" : "s"}.`);
+
+        if (allNewDrafts.length > 0) {
+          let msg = `Generated ${allNewDrafts.length} draft${allNewDrafts.length === 1 ? "" : "s"}`;
+          if (totalFailed > 0) msg += `, ${totalFailed} failed`;
+          if (capHit) msg += " (monthly cap reached)";
+          msg += ".";
+          toast(msg);
+        } else if (capHit) {
+          toast(lastError?.message || "Monthly cap reached.");
+        } else if (lastError) {
+          toast(lastError.message || "Generation failed.");
         }
-        updateSelectionUi();
-      } catch (err) {
-        if (err.status === 429 && err.payload?.usage) {
-          usageCache = err.payload.usage;
-          renderUsage(usageCache);
-        }
-        toast(err.message || "Generation failed.");
       } finally {
         btn.disabled = false;
         btn.textContent = prevText;
