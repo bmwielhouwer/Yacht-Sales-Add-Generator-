@@ -24,9 +24,13 @@
           <path d="M4 24 L24 27 L24 24 Z" fill="currentColor" />
         </svg>
         <span class="wordmark-divider" aria-hidden="true"></span>
-        <span class="wordmark-primary">Compass Line Marine</span>
+        <span class="wordmark-primary"><a href="/">Compass Line Marine</a></span>
         <span class="header-spacer"></span>
-        <button type="button" class="header-link" id="sign-out" hidden>Sign out</button>
+        <a href="/dashboard" class="header-cta" id="dashboard-link" hidden>Dashboard</a>
+        <span class="header-account" id="header-account" hidden>
+          <span class="email" id="header-email"></span>
+          <button type="button" class="header-logout" id="sign-out">Sign out</button>
+        </span>
       </div>
     </header>
     <section class="hero">
@@ -206,6 +210,11 @@
       const gateError = document.getElementById("gate-error");
       const gateSubmit = document.getElementById("gate-submit");
       const signOutBtn = document.getElementById("sign-out");
+      const dashboardLink = document.getElementById("dashboard-link");
+      const headerAccount = document.getElementById("header-account");
+      const headerEmail = document.getElementById("header-email");
+
+      let dashSession = null;
 
       function getAccessCode() {
         return localStorage.getItem(ACCESS_KEY);
@@ -213,17 +222,54 @@
       function openGate() {
         gate.hidden = false;
         document.body.style.overflow = "hidden";
-        signOutBtn.hidden = true;
+        headerAccount.hidden = true;
+        dashboardLink.hidden = true;
         setTimeout(() => gateInput.focus(), 50);
       }
       function closeGate() {
         gate.hidden = true;
         document.body.style.overflow = "";
-        signOutBtn.hidden = false;
       }
-      function signOut() {
+      function showSignedInChrome(email) {
+        headerEmail.textContent = email || "";
+        headerAccount.hidden = false;
+        dashboardLink.hidden = false;
+      }
+      function showCodeOnlyChrome() {
+        headerAccount.hidden = false;
+        headerEmail.textContent = "";
+        dashboardLink.hidden = true;
+      }
+      async function signOut() {
+        try {
+          await fetch("/api/dashboard/logout", { method: "POST", credentials: "same-origin" });
+        } catch {}
         localStorage.removeItem(ACCESS_KEY);
         location.reload();
+      }
+
+      function prefillBroker(profile) {
+        if (!profile) return;
+        const map = {
+          "broker-name": profile.name,
+          "broker-company": profile.company,
+          "broker-phone": profile.phone,
+          "broker-email": profile.email,
+        };
+        for (const [id, value] of Object.entries(map)) {
+          const el = document.getElementById(id);
+          if (el && !el.value && value) el.value = value;
+        }
+      }
+
+      async function tryDashboardSession() {
+        try {
+          const res = await fetch("/api/dashboard/me", { credentials: "same-origin" });
+          if (!res.ok) return null;
+          return await res.json();
+        } catch {
+          return null;
+        }
       }
 
       gateInput.addEventListener("input", () => {
@@ -246,6 +292,7 @@
           const data = await res.json().catch(() => ({}));
           if (res.ok && data.ok) {
             localStorage.setItem(ACCESS_KEY, code);
+            showCodeOnlyChrome();
             closeGate();
           } else {
             gateError.textContent = data.error || "Invalid code — check your welcome email";
@@ -262,11 +309,21 @@
 
       signOutBtn.addEventListener("click", signOut);
 
-      if (!getAccessCode()) {
-        openGate();
-      } else {
-        signOutBtn.hidden = false;
-      }
+      (async () => {
+        const me = await tryDashboardSession();
+        if (me?.email) {
+          dashSession = me;
+          showSignedInChrome(me.email);
+          prefillBroker(me.profile);
+          closeGate();
+          return;
+        }
+        if (getAccessCode()) {
+          showCodeOnlyChrome();
+        } else {
+          openGate();
+        }
+      })();
 
       const MAX_PHOTOS = 25;
       const MAX_WIDTH = 1600;

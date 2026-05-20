@@ -1,4 +1,5 @@
 import { isCodeActive } from "./_codes.js";
+import { readSession } from "./_dashboard.js";
 
 function envOverrides() {
   const raw = process.env.MARINE_ACCESS_CODES;
@@ -40,11 +41,16 @@ export function withGuard(handler, { requireCode = true } = {}) {
       });
     }
     if (requireCode) {
-      const supplied = req.headers["x-access-code"];
-      if (!(await isValidAccessCode(supplied))) {
-        return res
-          .status(403)
-          .json({ error: "Access code required. Refresh the page and re-enter your code." });
+      const session = readSession(req);
+      if (session?.email) {
+        req.session = session;
+      } else {
+        const supplied = req.headers["x-access-code"];
+        if (!(await isValidAccessCode(supplied))) {
+          return res
+            .status(403)
+            .json({ error: "Access code required. Refresh the page and re-enter your code." });
+        }
       }
     }
     try {

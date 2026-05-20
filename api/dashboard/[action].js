@@ -102,7 +102,27 @@ async function meHandler(req, res) {
   if (!session?.email) {
     return res.status(401).json({ error: "Not authenticated." });
   }
-  return res.status(200).json({ email: session.email });
+
+  let profile = { name: null, company: null, phone: null, email: session.email };
+  try {
+    if (getRedis()) {
+      const slugs = await getBrokerListingSlugs(session.email);
+      if (slugs.length) {
+        const record = await loadListing(slugs[0]);
+        const broker = record?.broker || record?.boatData?.broker || {};
+        profile = {
+          name: broker.name ?? null,
+          company: broker.company ?? null,
+          phone: broker.phone ?? null,
+          email: broker.email ?? session.email,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("[dashboard.me] profile lookup failed", err?.message ?? err);
+  }
+
+  return res.status(200).json({ email: session.email, profile });
 }
 
 async function listingsHandler(req, res) {
