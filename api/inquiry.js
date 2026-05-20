@@ -92,14 +92,36 @@ async function handleInquiry(req, res) {
       .join(" ");
   const url = listingRecord.listingUrl || listingUrl(getPublicOrigin(req), slug);
 
-  try {
-    await sendInquiryEmail({
-      broker,
-      lead,
-      listing: { boatName, url },
-    });
-  } catch (err) {
-    console.error("sendInquiryEmail failed", err);
+  console.log("[inquiry] notifying broker", {
+    slug,
+    brokerEmailPresent: !!broker?.email,
+    brokerEmail: broker?.email ?? null,
+    leadEmail: lead.email,
+    boatName,
+  });
+
+  if (!broker?.email) {
+    console.warn(
+      "[inquiry] no broker email on saved listing — lead is stored but no notification sent",
+      { slug },
+    );
+  } else {
+    try {
+      const result = await sendInquiryEmail({
+        broker,
+        lead,
+        listing: { boatName, url },
+      });
+      console.log("[inquiry] email send succeeded", { slug, id: result?.id });
+    } catch (err) {
+      console.error("[inquiry] sendInquiryEmail failed", {
+        slug,
+        brokerEmail: broker.email,
+        message: err?.message,
+        name: err?.name,
+        stack: err?.stack,
+      });
+    }
   }
 
   const firstName = String(broker?.name ?? "").trim().split(/\s+/)[0] || "The broker";
