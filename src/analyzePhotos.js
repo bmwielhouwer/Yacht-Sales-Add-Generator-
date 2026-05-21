@@ -87,14 +87,20 @@ export async function analyzePhotos(photoSources) {
     return { photos: [], missing_categories: [...STANDARD_CATEGORIES], quality_issues: [] };
   }
 
+  const errors = [];
   const settled = await Promise.all(
     photoSources.map((source, i) =>
       classifyOne(source, i).catch((err) => {
         console.error(`Photo ${i + 1} classification failed:`, err?.message ?? err);
+        errors.push(err);
         return null;
       }),
     ),
   );
+
+  if (errors.length === photoSources.length) {
+    throw errors[0];
+  }
 
   const photos = settled.filter(Boolean);
 

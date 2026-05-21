@@ -198,6 +198,14 @@
       Compass Line Marine — Built for serious brokers
     </footer>
 
+    <div class="gate-backdrop founder-backdrop" id="founder-modal" hidden role="dialog" aria-modal="true" aria-labelledby="founder-title">
+      <div class="gate-card founder-card">
+        <button type="button" class="gate-close" id="founder-close" aria-label="Close">&times;</button>
+        <h2 id="founder-title">A note from Brian</h2>
+        <div class="founder-body" id="founder-body"></div>
+      </div>
+    </div>
+
     <div class="gate-backdrop" id="gate" hidden role="dialog" aria-modal="true" aria-labelledby="gate-title">
       <div class="gate-card">
         <button type="button" class="gate-close" id="gate-close" aria-label="Close">&times;</button>
@@ -518,8 +526,76 @@
           }
         }
         if (!res.ok) throw new Error(data?.error || `HTTP ${res.status} from ${path}`);
+        if (data && data.status === "founder_message") {
+          const fmErr = new Error("founder_message");
+          fmErr.founderMessage = { title: data.title, message: data.message };
+          throw fmErr;
+        }
         return data ?? {};
       }
+
+      const founderModal = document.getElementById("founder-modal");
+      const founderTitleEl = document.getElementById("founder-title");
+      const founderBodyEl = document.getElementById("founder-body");
+      const founderCloseBtn = document.getElementById("founder-close");
+
+      function appendFounderText(node, text) {
+        const lines = text.split("\n");
+        const emailRe = /[\w.+-]+@[\w-]+\.[\w.-]+/;
+        const phoneRe = /\(\d{3}\)\s*\d{3}[-.\s]?\d{4}|\d{3}[-.\s]\d{3}[-.\s]\d{4}/;
+        lines.forEach((line, idx) => {
+          if (idx > 0) node.appendChild(document.createElement("br"));
+          let remaining = line;
+          while (remaining.length) {
+            const e = remaining.match(emailRe);
+            const p = remaining.match(phoneRe);
+            let pick = null;
+            if (e && (!p || e.index <= p.index)) pick = { kind: "email", m: e };
+            else if (p) pick = { kind: "phone", m: p };
+            if (!pick) {
+              node.appendChild(document.createTextNode(remaining));
+              break;
+            }
+            if (pick.m.index > 0) {
+              node.appendChild(document.createTextNode(remaining.slice(0, pick.m.index)));
+            }
+            const token = pick.m[0];
+            const a = document.createElement("a");
+            a.textContent = token;
+            a.href = pick.kind === "email"
+              ? "mailto:" + token
+              : "tel:" + token.replace(/[^\d+]/g, "");
+            a.rel = "noopener";
+            node.appendChild(a);
+            remaining = remaining.slice(pick.m.index + token.length);
+          }
+        });
+      }
+
+      function showFounderModal({ title, message }) {
+        founderTitleEl.textContent = title || "A note from Brian";
+        founderBodyEl.replaceChildren();
+        const paragraphs = String(message || "").split(/\n{2,}/);
+        for (const para of paragraphs) {
+          if (!para.trim()) continue;
+          const p = document.createElement("p");
+          appendFounderText(p, para);
+          founderBodyEl.appendChild(p);
+        }
+        founderModal.hidden = false;
+        document.body.style.overflow = "hidden";
+      }
+      function closeFounderModal() {
+        founderModal.hidden = true;
+        document.body.style.overflow = "";
+      }
+      founderCloseBtn.addEventListener("click", closeFounderModal);
+      founderModal.addEventListener("click", (e) => {
+        if (e.target === founderModal) closeFounderModal();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !founderModal.hidden) closeFounderModal();
+      });
 
       const EMPTY_PHOTO_SUMMARY = { photos: [], missing_categories: [], quality_issues: [] };
 
@@ -1719,6 +1795,11 @@
           renderResults(data);
         } catch (err) {
           hideLoader();
+          if (err?.founderMessage) {
+            setStatus("");
+            showFounderModal(err.founderMessage);
+            return;
+          }
           const msg = String(err?.message ?? err);
           const looksLikeTimeout =
             /504|FUNCTION_INVOCATION_TIMEOUT|timed? ?out|Gateway Time-?out|NetworkError|Failed to fetch/i.test(

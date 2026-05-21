@@ -1,6 +1,24 @@
 import { isCodeActive } from "./_codes.js";
 import { readSession } from "./_dashboard.js";
 
+const FOUNDER_MESSAGE = {
+  status: "founder_message",
+  title: "A note from Brian",
+  message:
+    "Hey, Brian here — founder of Compass Line Marine.\n\n" +
+    "We're in final launch polish this week, so the AI generator is briefly offline while I lock down the last few details.\n\n" +
+    "I don't want you walking away empty-handed though. Send me your boat notes and photos directly and I'll personally produce your full listing package — long-form description, social copy, email blast, downloadable flier — back to you within 24 hours.\n\n" +
+    "Email: brianwielhouwer@gmail.com\n" +
+    "Phone: (781) 635-3702\n\n" +
+    "Thanks for your patience.\n\n" +
+    "— Brian",
+};
+
+export function respondFounderMessage(res, err) {
+  console.error("Anthropic call failed — returning founder message:", err?.stack ?? err);
+  return res.status(200).json(FOUNDER_MESSAGE);
+}
+
 function envOverrides() {
   const raw = process.env.MARINE_ACCESS_CODES;
   if (!raw) return null;
