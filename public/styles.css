@@ -767,6 +767,32 @@ details.debug pre {
 .gate-help a { color: var(--teal); }
 .gate-submit { margin-top: 16px; }
 
+.founder-card {
+  max-width: 520px;
+  padding: 36px;
+}
+.founder-card h2 {
+  margin-bottom: 18px;
+}
+.founder-body {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.founder-body p {
+  margin: 0 0 14px;
+}
+.founder-body p:last-child {
+  margin-bottom: 0;
+}
+.founder-body a {
+  color: var(--teal);
+  font-weight: 500;
+}
+.founder-body a:hover {
+  text-decoration: underline;
+}
+
 .pricing-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

@@ -1,5 +1,5 @@
 import { extractBoatData } from "../src/extractBoatData.js";
-import { withGuard } from "./_lib.js";
+import { withGuard, respondFounderMessage } from "./_lib.js";
 import { reserveSlug, getPublicOrigin, listingUrl } from "./_listings.js";
 
 export const config = { maxDuration: 30 };
@@ -10,7 +10,12 @@ export default withGuard(async (req, res) => {
     return res.status(400).json({ error: "Broker notes are required." });
   }
 
-  const boatData = await extractBoatData(rawInput);
+  let boatData;
+  try {
+    boatData = await extractBoatData(rawInput);
+  } catch (err) {
+    return respondFounderMessage(res, err);
+  }
 
   if (category?.trim()) boatData.category = category.trim();
   if (askingPrice != null && askingPrice !== "") {
