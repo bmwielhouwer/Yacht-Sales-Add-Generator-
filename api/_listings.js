@@ -174,3 +174,12 @@ export async function inquiryRateLimit(ip, max = 5, windowSec = 3600) {
   if (count === 1) await redis.expire(key, windowSec);
   return { allowed: count <= max, remaining: Math.max(0, max - count) };
 }
+
+export async function conciergeRateLimit(ip, max = 5, windowSec = 3600) {
+  const redis = getRedis();
+  if (!redis) return { allowed: true, remaining: max };
+  const key = `concierge:rl:${ip}`;
+  const count = await redis.incr(key);
+  if (count === 1) await redis.expire(key, windowSec);
+  return { allowed: count <= max, remaining: Math.max(0, max - count) };
+}

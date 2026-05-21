@@ -33,11 +33,66 @@
       <section class="concierge-hero">
         <span class="concierge-eyebrow">Founder Concierge</span>
         <h1>Your Full Listing Package, Written in 24 Hours</h1>
-        <p class="concierge-hero-sub">Send me your boat notes and photos. I'll personally produce the complete marketing package by tomorrow.</p>
-        <a class="btn btn-primary concierge-cta" href="mailto:brianwielhouwer@gmail.com?subject=Concierge%20Listing%20Request">
-          <span>Email Brian Your Boat Notes</span>
-          <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
-        </a>
+        <p class="concierge-hero-sub">Send me your boat notes below. I'll personally produce the complete marketing package by tomorrow.</p>
+      </section>
+
+      <section class="concierge-form-section" id="concierge-form">
+        <div class="card concierge-form-card">
+          <div class="concierge-form-intro" id="ci-intro">
+            <h2 class="concierge-section-title concierge-form-title">Send Brian your boat notes</h2>
+            <p class="concierge-form-sub">I'll have your full marketing package back to you within 24 hours. Photos can come in a follow-up email after you hear from me.</p>
+          </div>
+
+          <form id="concierge-inquiry-form">
+            <div class="grid-2 field">
+              <div>
+                <label for="ci-name">Your name <span class="req">*</span></label>
+                <input id="ci-name" name="name" type="text" autocomplete="name" maxlength="120" required />
+              </div>
+              <div>
+                <label for="ci-email">Your email <span class="req">*</span></label>
+                <input id="ci-email" name="email" type="email" autocomplete="email" maxlength="200" required />
+              </div>
+            </div>
+
+            <div class="grid-2 field">
+              <div>
+                <label for="ci-phone">Your phone</label>
+                <input id="ci-phone" name="phone" type="tel" autocomplete="tel" maxlength="60" placeholder="(555) 123-4567" />
+              </div>
+              <div>
+                <label for="ci-price">Asking price</label>
+                <input id="ci-price" name="askingPrice" type="text" autocomplete="off" maxlength="60" placeholder="$285,000" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="ci-ymm">Boat year / make / model <span class="req">*</span></label>
+              <input id="ci-ymm" name="boatYmm" type="text" autocomplete="off" maxlength="200" placeholder="2023 Boston Whaler 280 Outrage" required />
+            </div>
+
+            <div class="field">
+              <label for="ci-notes">Your broker notes <span class="req">*</span></label>
+              <textarea id="ci-notes" name="notes" class="notes" rows="6" maxlength="5000" placeholder="Paste your raw notes — engine hours, electronics, condition, anything you'd normally write up." required></textarea>
+            </div>
+
+            <div class="concierge-form-submit-row">
+              <button type="submit" class="btn btn-primary concierge-form-submit" id="ci-submit">
+                <span class="spinner ci-spinner" hidden></span>
+                <span class="ci-submit-label">Send Brian Your Boat Notes</span>
+                <svg class="btn-arrow ci-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+              </button>
+              <p class="concierge-form-error" id="ci-error" hidden>
+                Something went wrong on our end. Please email me directly at <a href="mailto:brianwielhouwer@gmail.com">brianwielhouwer@gmail.com</a>.
+              </p>
+            </div>
+          </form>
+
+          <div class="concierge-form-success" id="ci-success" hidden>
+            <p>Got it. I'll have your full marketing package back to you within 24 hours. Photos can come in a follow-up email.</p>
+            <p class="concierge-form-success-sign">— Brian</p>
+          </div>
+        </div>
       </section>
 
       <section class="concierge-story">
@@ -74,7 +129,7 @@
         <ol class="concierge-steps">
           <li>
             <span class="concierge-step-num">1</span>
-            <p>Send me your boat notes and photos via email</p>
+            <p>Fill in the form above with your boat details</p>
           </li>
           <li>
             <span class="concierge-step-num">2</span>
@@ -90,8 +145,8 @@
       <section class="concierge-pricing">
         <p class="concierge-pricing-line">$49 flat per listing</p>
         <p class="concierge-pricing-sub">One-time, no subscription</p>
-        <a class="btn btn-primary concierge-cta" href="mailto:brianwielhouwer@gmail.com?subject=Concierge%20Listing%20Request">
-          <span>Email Brian to Get Started</span>
+        <a class="btn btn-primary concierge-cta" href="#concierge-form">
+          <span>Send Brian Your Boat Notes</span>
           <svg class="btn-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
         </a>
       </section>
@@ -110,5 +165,76 @@
     <footer class="site-footer">
       Compass Line Marine — Built for serious brokers
     </footer>
+
+    <script>
+      (function () {
+        const form = document.getElementById("concierge-inquiry-form");
+        const submitBtn = document.getElementById("ci-submit");
+        const submitLabel = submitBtn.querySelector(".ci-submit-label");
+        const submitSpinner = submitBtn.querySelector(".ci-spinner");
+        const submitArrow = submitBtn.querySelector(".ci-arrow");
+        const errEl = document.getElementById("ci-error");
+        const successEl = document.getElementById("ci-success");
+        const introEl = document.getElementById("ci-intro");
+        const cardEl = form.closest(".concierge-form-card");
+
+        const ORIGINAL_LABEL = submitLabel.textContent;
+
+        function setBusy(busy) {
+          submitBtn.disabled = busy;
+          submitLabel.textContent = busy ? "Sending…" : ORIGINAL_LABEL;
+          submitSpinner.hidden = !busy;
+          submitArrow.style.display = busy ? "none" : "";
+        }
+
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          errEl.hidden = true;
+
+          if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+          }
+
+          const data = {
+            name: form.name.value.trim(),
+            email: form.email.value.trim(),
+            phone: form.phone.value.trim(),
+            boatYmm: form.boatYmm.value.trim(),
+            askingPrice: form.askingPrice.value.trim(),
+            notes: form.notes.value.trim(),
+          };
+
+          setBusy(true);
+
+          let succeeded = false;
+          try {
+            const res = await fetch("/api/concierge-inquiry", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (res.ok && json.ok) {
+              succeeded = true;
+              form.hidden = true;
+              if (introEl) introEl.hidden = true;
+              successEl.hidden = false;
+              if (cardEl && cardEl.scrollIntoView) {
+                cardEl.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+              return;
+            }
+            console.warn("[concierge-form] non-ok response", res.status, json);
+            errEl.hidden = false;
+          } catch (err) {
+            console.error("[concierge-form] submit failed", err);
+            errEl.hidden = false;
+          } finally {
+            if (!succeeded) setBusy(false);
+          }
+        });
+      })();
+    </script>
   </body>
 </html>
