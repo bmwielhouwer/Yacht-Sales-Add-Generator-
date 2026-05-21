@@ -1372,3 +1372,195 @@ textarea.output.output-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
 }
+
+/* ─── Founder Concierge landing (/concierge) ─── */
+.concierge { max-width: 720px; padding-top: 32px; padding-bottom: 96px; }
+
+.concierge section + section { margin-top: 56px; }
+
+.concierge-hero { text-align: center; padding: 24px 0 8px; }
+.concierge-eyebrow {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brass);
+  margin-bottom: 18px;
+}
+.concierge-hero h1 {
+  margin: 0 0 18px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-size: 38px;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+}
+.concierge-hero-sub {
+  margin: 0 auto 28px;
+  max-width: 560px;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.55;
+}
+.concierge-cta {
+  padding: 14px 24px;
+  font-size: 15px;
+}
+
+.concierge-story {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: inset 3px 0 0 var(--brass), var(--shadow-sm);
+  padding: 26px 24px 22px 28px;
+}
+.concierge-story-text {
+  margin: 0 0 14px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.55;
+  color: var(--navy);
+  letter-spacing: 0.005em;
+}
+.concierge-story-attr {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.concierge-section-title {
+  margin: 0 0 20px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-size: 26px;
+  color: var(--navy);
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+}
+
+.concierge-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.concierge-list li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.concierge-check {
+  width: 18px;
+  height: 18px;
+  color: var(--teal);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.concierge-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  counter-reset: concierge-step;
+}
+.concierge-steps li {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.concierge-step-num {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: var(--brass);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 1;
+}
+.concierge-steps li p {
+  margin: 6px 0 0;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.concierge-pricing {
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+  padding: 36px 24px 32px;
+}
+.concierge-pricing-line {
+  margin: 0 0 6px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-size: 32px;
+  color: var(--navy);
+  letter-spacing: -0.005em;
+  line-height: 1.15;
+}
+.concierge-pricing-sub {
+  margin: 0 0 22px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.concierge-contact {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.concierge-contact-line {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+.concierge-contact-line a {
+  color: var(--teal);
+  font-weight: 500;
+}
+.concierge-contact-line a:hover {
+  text-decoration: underline;
+}
+.concierge-contact-note {
+  margin: 14px auto 0;
+  max-width: 460px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+@media (min-width: 720px) {
+  .concierge { padding-top: 56px; }
+  .concierge section + section { margin-top: 72px; }
+  .concierge-hero { padding-top: 40px; }
+  .concierge-hero h1 { font-size: 52px; }
+  .concierge-hero-sub { font-size: 18px; }
+  .concierge-section-title { font-size: 30px; }
+  .concierge-pricing-line { font-size: 38px; }
+  .concierge-pricing { padding: 44px 28px 40px; }
+  .concierge-story { padding: 32px 32px 28px 36px; }
+  .concierge-story-text { font-size: 22px; }
+}
