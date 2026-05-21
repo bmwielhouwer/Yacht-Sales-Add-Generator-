@@ -72,7 +72,7 @@ Return JSON exactly matching this structure. Every field is required unless mark
 
 <output_specifications>
 
-LONG_DESCRIPTION (350-500 words, for YachtWorld / Boat Trader)
+LONG_DESCRIPTION (350-500 words, professional long-form listing write-up)
 - Paragraph 1: Character and story. Where has she been? What does she do best? What makes this specific hull stand out?
 - Paragraph 2: Condition, history, recent upgrades, distinguishing features.
 - Paragraph 3 (optional): Accommodations or use-case detail for buyers visualizing ownership.

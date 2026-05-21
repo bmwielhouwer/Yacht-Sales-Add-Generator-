@@ -2,7 +2,7 @@
 
 Compass Line Marine listing-package generator. Takes broker notes plus photos and produces:
 
-- a long YachtWorld / Boat Trader description
+- a long-form listing description
 - Facebook Marketplace blurb
 - Facebook feed post
 - Instagram caption + hashtags
