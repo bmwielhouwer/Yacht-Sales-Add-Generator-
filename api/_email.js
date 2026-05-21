@@ -188,6 +188,79 @@ export async function sendInquiryEmail({ broker, lead, listing }) {
   return data;
 }
 
+function conciergeInquiryHtml({ name, email, phone, boatYmm, askingPrice, notes }) {
+  const safeName = escapeHtml(name);
+  const safeEmail = escapeHtml(email);
+  const safePhone = phone ? escapeHtml(phone) : "";
+  const safeYmm = escapeHtml(boatYmm);
+  const safePrice = askingPrice ? escapeHtml(askingPrice) : "";
+  const safeNotes = escapeHtml(notes).replace(/\n/g, "<br>");
+  const phoneRow = safePhone
+    ? `<tr><td style="padding:6px 0;font-size:14px;"><strong style="color:#5F5F5F;font-weight:500;">Phone:</strong> <a href="tel:${safePhone}" style="color:#0B2545;text-decoration:none;">${safePhone}</a></td></tr>`
+    : "";
+  const priceRow = safePrice
+    ? `<tr><td style="padding:6px 0;font-size:14px;"><strong style="color:#5F5F5F;font-weight:500;">Asking price:</strong> ${safePrice}</td></tr>`
+    : "";
+  return `<!doctype html>
+<html><body style="margin:0;padding:0;background:#F7F7F4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1A1A1A;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#F7F7F4;padding:32px 16px;">
+  <tr><td align="center">
+    <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#FFFFFF;border:1px solid #e6e3dc;border-radius:12px;box-shadow:0 2px 8px rgba(11,37,69,0.06);">
+      <tr><td style="padding:24px 32px;border-bottom:1px solid #e6e3dc;">
+        <div style="font-size:11px;font-weight:600;color:#C8A951;letter-spacing:0.1em;text-transform:uppercase;">Concierge Inquiry</div>
+        <div style="font-size:20px;font-weight:500;color:#0B2545;margin-top:6px;">${safeYmm}</div>
+      </td></tr>
+      <tr><td style="padding:24px 32px;">
+        <p style="margin:0 0 14px 0;font-size:15px;color:#1A1A1A;">A broker just requested a concierge listing package.</p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <tr><td style="padding:6px 0;font-size:14px;"><strong style="color:#5F5F5F;font-weight:500;">Name:</strong> ${safeName}</td></tr>
+          <tr><td style="padding:6px 0;font-size:14px;"><strong style="color:#5F5F5F;font-weight:500;">Email:</strong> <a href="mailto:${safeEmail}" style="color:#0B2545;text-decoration:none;">${safeEmail}</a></td></tr>
+          ${phoneRow}
+          ${priceRow}
+          <tr><td style="padding:14px 0 0 0;">
+            <div style="font-size:12px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Broker notes</div>
+            <div style="background:#F7F7F4;border-left:3px solid #C8A951;padding:12px 14px;border-radius:4px;font-size:14px;line-height:1.55;color:#1A1A1A;">${safeNotes}</div>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:18px 32px;background:#F7F7F4;border-top:1px solid #e6e3dc;border-radius:0 0 12px 12px;font-size:12px;color:#5F5F5F;">
+        Compass Line Marine · Reply directly to reach the broker.
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+}
+
+export async function sendConciergeInquiryEmail({ name, email, phone, boatYmm, askingPrice, notes }) {
+  const resend = getResend();
+  const subj = `Concierge Inquiry: ${boatYmm}`;
+  console.log("[concierge-email] sending", {
+    to: "brianwielhouwer@gmail.com",
+    from: "Compass Line Marine <noreply@compasslineventures.com>",
+    replyTo: email,
+    subject: subj,
+  });
+  const { data, error } = await resend.emails.send({
+    from: "Compass Line Marine <noreply@compasslineventures.com>",
+    to: "brianwielhouwer@gmail.com",
+    replyTo: email,
+    subject: subj,
+    html: conciergeInquiryHtml({ name, email, phone, boatYmm, askingPrice, notes }),
+  });
+  if (error) {
+    console.error("[concierge-email] resend rejected", {
+      name: error?.name,
+      message: error?.message,
+      statusCode: error?.statusCode,
+      raw: error,
+    });
+    throw new Error(`Resend rejected: ${error.message || error.name || JSON.stringify(error)}`);
+  }
+  console.log("[concierge-email] sent", { id: data?.id });
+  return data;
+}
+
 export async function sendWelcomeEmail({ toEmail, firstName, code, tier }) {
   const resend = getResend();
   const html = welcomeHtml({ firstName: firstName || "there", code, tier });
