@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { extname } from "node:path";
-import { client, MODELS } from "./config.js";
+import { getClient, MODELS } from "./config.js";
 import { loadPrompt, parseJsonResponse } from "./loadPrompt.js";
 
 const SYSTEM = loadPrompt("analyze-photos");
@@ -52,7 +52,7 @@ function imageBlock(source) {
   };
 }
 
-async function classifyOne(source, index) {
+async function classifyOne(source, index, { apiKey } = {}) {
   const content = [
     imageBlock(source),
     {
@@ -65,7 +65,7 @@ async function classifyOne(source, index) {
     },
   ];
 
-  const response = await client.messages.create({
+  const response = await getClient(apiKey).messages.create({
     model: MODELS.vision,
     max_tokens: 400,
     system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
@@ -82,7 +82,7 @@ async function classifyOne(source, index) {
   };
 }
 
-export async function analyzePhotos(photoSources) {
+export async function analyzePhotos(photoSources, { apiKey } = {}) {
   if (!Array.isArray(photoSources) || photoSources.length === 0) {
     return { photos: [], missing_categories: [...STANDARD_CATEGORIES], quality_issues: [] };
   }
@@ -90,7 +90,7 @@ export async function analyzePhotos(photoSources) {
   const errors = [];
   const settled = await Promise.all(
     photoSources.map((source, i) =>
-      classifyOne(source, i).catch((err) => {
+      classifyOne(source, i, { apiKey }).catch((err) => {
         console.error(`Photo ${i + 1} classification failed:`, err?.message ?? err);
         errors.push(err);
         return null;

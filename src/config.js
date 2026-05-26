@@ -7,3 +7,7 @@ export const MODELS = {
 };
 
 export const client = new Anthropic();
+
+export function getClient(apiKey) {
+  return apiKey ? new Anthropic({ apiKey }) : client;
+}

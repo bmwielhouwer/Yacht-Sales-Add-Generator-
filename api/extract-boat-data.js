@@ -12,7 +12,7 @@ export default withGuard(async (req, res) => {
 
   let boatData;
   try {
-    boatData = await extractBoatData(rawInput);
+    boatData = await extractBoatData(rawInput, { apiKey: req.anthropicApiKey });
   } catch (err) {
     return respondFounderMessage(res, err);
   }
