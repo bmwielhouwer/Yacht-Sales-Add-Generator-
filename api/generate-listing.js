@@ -10,7 +10,7 @@ export default withGuard(async (req, res) => {
 
   let listing;
   try {
-    listing = await generateListing({ boatData, photoSummary, listingUrl });
+    listing = await generateListing({ boatData, photoSummary, listingUrl }, { apiKey: req.anthropicApiKey });
   } catch (err) {
     return respondFounderMessage(res, err);
   }

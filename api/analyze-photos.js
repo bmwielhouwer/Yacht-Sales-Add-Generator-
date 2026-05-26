@@ -12,7 +12,7 @@ export default withGuard(async (req, res) => {
 
   let photoSummary;
   try {
-    photoSummary = await analyzePhotos(photos);
+    photoSummary = await analyzePhotos(photos, { apiKey: req.anthropicApiKey });
   } catch (err) {
     return respondFounderMessage(res, err);
   }

@@ -52,12 +52,15 @@ export function withGuard(handler, { requireCode = true } = {}) {
       res.setHeader("Allow", "POST");
       return res.status(405).json({ error: "POST only" });
     }
-    if (!process.env.ANTHROPIC_API_KEY) {
+    const anthropicApiKey =
+      req.headers["x-anthropic-key"] || process.env.ANTHROPIC_API_KEY || null;
+    if (!anthropicApiKey) {
       return res.status(500).json({
         error:
-          "ANTHROPIC_API_KEY is not set on this deployment. Add it in Vercel → Project Settings → Environment Variables and redeploy.",
+          "No Anthropic API key found. Enter your API key in the settings panel, or set ANTHROPIC_API_KEY in Vercel environment variables.",
       });
     }
+    req.anthropicApiKey = anthropicApiKey;
     if (requireCode) {
       const session = readSession(req);
       if (session?.email) {
